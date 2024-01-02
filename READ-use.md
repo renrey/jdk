@@ -14,11 +14,16 @@ export DISABLE_HOTSPOT_OS_VERSION_CHECK=ok
 ```
 sudo apt-get install ccache
 ```
+一些依赖
 
-命令
+```
+sudo apt-get install libxext-dev libxrender-dev libxtst-dev libxt-dev
+```
+
+具体开始命令
 1. 初始化
   ```shell
-  bash configure --with-boot-jdk=$JAVA7_HOME --target-with-bits=64 --with-debug-level=slowdebug
+  bash configure --with-boot-jdk=$JAVA7_HOME --with-target-bits=64 --with-debug-level=slowdebug
   ```
 2. 编译
    ```shell
