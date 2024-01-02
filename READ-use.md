@@ -3,9 +3,16 @@
 os初始化
 
 安装jdk7
+
+
 配置关闭编译验证
 ```
 export DISABLE_HOTSPOT_OS_VERSION_CHECK=ok
+```
+
+编译缓存
+```
+sudo apt-get install ccache
 ```
 
 命令
