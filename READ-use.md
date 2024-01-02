@@ -18,6 +18,9 @@ sudo apt-get install ccache
 
 ```
 sudo apt-get install libxext-dev libxrender-dev libxtst-dev libxt-dev
+sudo apt-get install libcups2-dev
+sudo apt-get install libfreetype6-dev
+sudo apt-get install libasound2-dev
 ```
 
 具体开始命令
