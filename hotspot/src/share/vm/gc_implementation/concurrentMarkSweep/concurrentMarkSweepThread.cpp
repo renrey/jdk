@@ -102,6 +102,7 @@ ConcurrentMarkSweepThread::ConcurrentMarkSweepThread(CMSCollector* collector)
   assert(!CMSIncrementalMode || icms_is_enabled(), "Error");
 }
 
+// cms后台线程
 void ConcurrentMarkSweepThread::run() {
   assert(this == cmst(), "just checking");
 
@@ -137,11 +138,14 @@ void ConcurrentMarkSweepThread::run() {
     clear_CMS_flag(CMS_cms_wants_token);
   }
 
+  // 一直执行
   while (!_should_terminate) {
+    // 程序终止或者需要gc，才会出来执行后面的代码
     sleepBeforeNextCycle();
     if (_should_terminate) break;
     GCCause::Cause cause = _collector->_full_gc_requested ?
       _collector->_full_gc_cause : GCCause::_cms_concurrent_mark;
+    // 执行后台gc
     _collector->collect_in_background(false, cause);
   }
   assert(_should_terminate, "just checking");
@@ -412,6 +416,7 @@ void ConcurrentMarkSweepThread::sleepBeforeNextCycle() {
       }
     }
     // Check if we should start a CMS collection cycle
+    // 收集器任务需要执行gc，跳出
     if (_collector->shouldConcurrentCollect()) {
       return;
     }

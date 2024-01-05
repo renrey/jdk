@@ -481,10 +481,12 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   // Returns "true" iff there is a stop-world GC in progress.  (I assume
   // that it should answer "false" for the concurrent part of a concurrent
   // collector -- dld).
+  // 返回是否正在stw：_is_gc_active
   bool is_gc_active() const { return _is_gc_active; }
 
   // Total number of GC collections (started)
   unsigned int total_collections() const { return _total_collections; }
+  // FULLGCc次数
   unsigned int total_full_collections() const { return _total_full_collections;}
 
   // Increment total number of GC collections (started)
@@ -496,6 +498,7 @@ class CollectedHeap : public CHeapObj<mtInternal> {
     }
   }
 
+  // fullgc次数+1
   void increment_total_full_collections() { _total_full_collections++; }
 
   // Return the AdaptiveSizePolicy for the heap.

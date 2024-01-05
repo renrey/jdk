@@ -275,7 +275,7 @@ class GenCollectorPolicy : public CollectorPolicy {
   virtual GenCollectorPolicy* as_generation_policy() { return this; }
 
   virtual void initialize_generations() { };
-
+  // 执行收集器策略的全部初始化
   virtual void initialize_all() {
     CollectorPolicy::initialize_all();
     initialize_generations();

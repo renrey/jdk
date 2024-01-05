@@ -39,6 +39,7 @@
 
 Generation* GenerationSpec::init(ReservedSpace rs, int level,
                                  GenRemSet* remset) {
+  // level就自己属于generation数组中第n个，老年代=1，年轻代=0
   switch (name()) {
     case Generation::DefNew:
       return new DefNewGeneration(rs, init_size(), level);
@@ -66,6 +67,7 @@ Generation* GenerationSpec::init(ReservedSpace rs, int level,
       // The constructor creates the CMSCollector if needed,
       // else registers with an existing CMSCollector
 
+      // cms老年代空间
       ConcurrentMarkSweepGeneration* g = NULL;
       g = new ConcurrentMarkSweepGeneration(rs,
                  init_size(), level, ctrs, UseCMSAdaptiveFreeLists,

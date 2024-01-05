@@ -60,13 +60,15 @@ class CardTableRS: public GenRemSet {
 
   void verify_space(Space* s, HeapWord* gen_start);
 
+  // 代表现成结构的CardTableModRefBS做扩展
   enum ExtendedCardValue {
-    youngergen_card   = CardTableModRefBS::CT_MR_BS_last_reserved + 1,
+    youngergen_card   = CardTableModRefBS::CT_MR_BS_last_reserved + 1, // 16+1
     // These are for parallel collection.
     // There are three P (parallel) youngergen card values.  In general, this
     // needs to be more than the number of generations (including the perm
     // gen) that might have younger_refs_do invoked on them separately.  So
     // if we add more gens, we have to add more values.
+    // 下面的代表并行使用的
     youngergenP1_card  = CardTableModRefBS::CT_MR_BS_last_reserved + 2,
     youngergenP2_card  = CardTableModRefBS::CT_MR_BS_last_reserved + 3,
     youngergenP3_card  = CardTableModRefBS::CT_MR_BS_last_reserved + 4,

@@ -145,6 +145,8 @@ void VM_CMS_Initial_Mark::doit() {
                                 );
 #endif /* USDT2 */
 
+
+  // 记录
   _collector->_gc_timer_cm->register_gc_pause_start("Initial Mark");
 
   GenCollectedHeap* gch = GenCollectedHeap::heap();
@@ -153,6 +155,7 @@ void VM_CMS_Initial_Mark::doit() {
   VM_CMS_Operation::verify_before_gc();
 
   IsGCActiveMark x; // stop-world GC active
+  // 实际执行，调用回CMSCollector::CMS_op_checkpointRootsInitial
   _collector->do_CMS_operation(CMSCollector::CMS_op_checkpointRootsInitial, gch->gc_cause());
 
   VM_CMS_Operation::verify_after_gc();

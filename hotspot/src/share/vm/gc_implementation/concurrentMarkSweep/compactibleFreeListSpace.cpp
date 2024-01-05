@@ -2092,6 +2092,9 @@ CompactibleFreeListSpace::refillLinearAllocBlock(LinearAllocBlock* blk) {
 bool CompactibleFreeListSpace::should_concurrent_collect() const {
   // In the future we might want to add in frgamentation stats --
   // including erosion of the "mountain" into this decision as well.
+  // 默認adaptive_freelists(UseCMSAdaptiveFreeLists)是true（配置參數）
+
+  // 默認返回false
   return !adaptive_freelists() && linearAllocationWouldFail();
 }
 

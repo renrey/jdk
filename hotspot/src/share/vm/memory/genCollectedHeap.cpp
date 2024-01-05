@@ -70,7 +70,7 @@ enum GCH_process_strong_roots_tasks {
 
 GenCollectedHeap::GenCollectedHeap(GenCollectorPolicy *policy) :
   SharedHeap(policy),
-  _gen_policy(policy),
+  _gen_policy(policy),//MarkSweepPolicy
   _gen_process_strong_tasks(new SubTasksDone(GCH_PS_NumElements)),
   _full_collections_completed(0)
 {
@@ -97,6 +97,7 @@ jint GenCollectedHeap::initialize() {
   // The heap must be at least as aligned as generations.
   size_t gen_alignment = Generation::GenGrain;
 
+  // 通过回收策略创建分代generations（2个代）：MarkSweepPolicy::initialize_generations()
   _gen_specs = gen_policy()->generations();
 
   // Make sure the sizes are all aligned.
@@ -132,13 +133,19 @@ jint GenCollectedHeap::initialize() {
   size_t actual_heap_size = heap_rs.size();
   _reserved.set_end((HeapWord*)(heap_rs.base() + actual_heap_size));
 
+  //MarkSweepPolicy
+  // _rem_set = remember_set, 實現使用CardTable
+  // CollectorPolicy::create_rem_set, 即CardTableRS
   _rem_set = collector_policy()->create_rem_set(_reserved, n_covered_regions);
   set_barrier_set(rem_set()->bs());
 
   _gch = this;
 
+  // 初始化generations（年轻代、老年代）
   for (i = 0; i < _n_gens; i++) {
     ReservedSpace this_rs = heap_rs.first_part(_gen_specs[i]->max_size(), false, false);
+	// 初始化（）
+    // GenerationSpec::init
     _gens[i] = _gen_specs[i]->init(this_rs, i, rem_set());
     heap_rs = heap_rs.last_part(_gen_specs[i]->max_size());
   }

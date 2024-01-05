@@ -813,6 +813,7 @@ jint Universe::initialize_heap() {
     }
     gc_policy->initialize_all();
 
+    // MarkSweepPolicy
     Universe::_collectedHeap = new GenCollectedHeap(gc_policy);
   }
 

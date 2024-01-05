@@ -295,6 +295,7 @@ inline size_t CMSCollector::get_eden_capacity() const {
 }
 
 inline bool CMSStats::valid() const {
+  // 其实就是看_valid_bits是否被全部的都or运算，即等于每个record都执行了一遍了(gc0_begin、cms_end)
   return _valid_bits == _ALL_VALID;
 }
 

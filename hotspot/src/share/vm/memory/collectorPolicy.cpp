@@ -963,6 +963,7 @@ void MarkSweepPolicy::initialize_alignments() {
   _heap_alignment = compute_heap_alignment();
 }
 
+// 初始化具体的代gen
 void MarkSweepPolicy::initialize_generations() {
   _generations = NEW_C_HEAP_ARRAY3(GenerationSpecPtr, number_of_generations(), mtGC, 0, AllocFailStrategy::RETURN_NULL);
   if (_generations == NULL) {
@@ -970,10 +971,12 @@ void MarkSweepPolicy::initialize_generations() {
   }
 
   if (UseParNewGC) {
+     // 年轻代用parNew, 年轻代=_generations[0]
     _generations[0] = new GenerationSpec(Generation::ParNew, _initial_gen0_size, _max_gen0_size);
   } else {
     _generations[0] = new GenerationSpec(Generation::DefNew, _initial_gen0_size, _max_gen0_size);
   }
+  // 老年代=_generations[1]
   _generations[1] = new GenerationSpec(Generation::MarkSweepCompact, _initial_gen1_size, _max_gen1_size);
 
   if (_generations[0] == NULL || _generations[1] == NULL) {

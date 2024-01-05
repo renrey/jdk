@@ -213,6 +213,7 @@ ConcurrentMarkSweepGeneration::ConcurrentMarkSweepGeneration(
     _numWordsAllocated = 0;
   )
 
+  // 创建CompactibleFreeListSpace
   _cmsSpace = new CompactibleFreeListSpace(_bts, MemRegion(bottom, end),
                                            use_adaptive_freelists,
                                            dictionaryChoice);
@@ -287,6 +288,9 @@ void ConcurrentMarkSweepGeneration::init_initiating_occupancy(intx io, uintx tr)
   if (io >= 0) {
     _initiating_occupancy = (double)io / 100.0;
   } else {
+      // MinHeapFreeRatio：默认40%
+      // tr（CMSTriggerRatio）：默认80
+      // 最终得到92%
     _initiating_occupancy = ((100 - MinHeapFreeRatio) +
                              (double)(tr * MinHeapFreeRatio) / 100.0)
                             / 100.0;
@@ -699,9 +703,16 @@ CMSCollector::CMSCollector(ConcurrentMarkSweepGeneration* cmsGen,
     }
   }
 
+  // 初始化gc容量
+  // 2种策略，
+  // 1、强制指定百分比，CMSInitiatingOccupancyFraction ，默认-1（走第二个）
+  // 2、使用CMSTriggerRatio的（默认=80%）、MinHeapFreeRatio（默认40%）就算，最终默认92%
+  // 因此默认就算92%
   _cmsGen ->init_initiating_occupancy(CMSInitiatingOccupancyFraction, CMSTriggerRatio);
 
   // Clip CMSBootstrapOccupancy between 0 and 100.
+  // CMSBootstrapOccupancy：初始gc所需的老年代占用百分比，用于启动收集分析
+  // 默认50%
   _bootstrap_occupancy = ((double)CMSBootstrapOccupancy)/(double)100;
 
   _full_gcs_since_conc_gc = 0;
@@ -710,6 +721,7 @@ CMSCollector::CMSCollector(ConcurrentMarkSweepGeneration* cmsGen,
   ConcurrentMarkSweepGeneration::set_collector(this);
 
   // Create & start a CMS thread for this CMS collector
+  // 创建启动后台线程
   _cmsThread = ConcurrentMarkSweepThread::start(this);
   assert(cmsThread() != NULL, "CMS Thread should have been created");
   assert(cmsThread()->collector() == this,
@@ -1472,6 +1484,7 @@ bool ConcurrentMarkSweepGeneration::should_collect(bool   full,
 }
 
 bool CMSCollector::shouldConcurrentCollect() {
+  // 主动调用gc接口
   if (_full_gc_requested) {
     if (Verbose && PrintGCDetails) {
       gclog_or_tty->print_cr("CMSCollector: collect because of explicit "
@@ -1517,19 +1530,28 @@ bool CMSCollector::shouldConcurrentCollect() {
   }
   // ------------------------------------------------------------------
 
+
+  // 就是预估完成1次cms的时间 < 预估剩余老年代达到full的时间, 执行1次gc
   // If the estimated time to complete a cms collection (cms_duration())
   // is less than the estimated time remaining until the cms generation
   // is full, start a collection.
+  // 没开启UseCMSInitiatingOccupancyOnly，
+  // 默认没开启(UseCMSInitiatingOccupancyOnly代表判斷是否執行gc只使用_initiating_occupancy比较)
   if (!UseCMSInitiatingOccupancyOnly) {
+    // 等于已执行过cms gc（=执行启动分析gc，因为这里是开头且判断百分比最低，是最有可能执行过的gc条件）
     if (stats().valid()) {
       if (stats().time_until_cms_start() == 0.0) {
         return true;
       }
+    // 未执行过启动分析gc
     } else {
       // We want to conservatively collect somewhat early in order
       // to try and "bootstrap" our CMS/promotion statistics;
       // this branch will not fire after the first successful CMS
       // collection because the stats should then be valid.
+
+      // 用于后续分析用的，初始gc
+      // 当前容量 >= 初始分析gc所需(默认50%)
       if (_cmsGen->occupancy() >= _bootstrap_occupancy) {
         if (Verbose && PrintGCDetails) {
           gclog_or_tty->print_cr(
@@ -1547,6 +1569,7 @@ bool CMSCollector::shouldConcurrentCollect() {
   // an appropriate criterion for making this decision.
   // XXX We need to make sure that the gen expansion
   // criterion dovetails well with this. XXX NEED TO FIX THIS
+  // 常规的gc判断，上面那个针对gc数据预估是否执行
   if (_cmsGen->should_concurrent_collect()) {
     if (Verbose && PrintGCDetails) {
       gclog_or_tty->print_cr("CMS old gen initiated");
@@ -1560,6 +1583,7 @@ bool CMSCollector::shouldConcurrentCollect() {
   GenCollectedHeap* gch = GenCollectedHeap::heap();
   assert(gch->collector_policy()->is_two_generation_policy(),
          "You may want to check the correctness of the following");
+  // 增量mode，目前先不看非重点
   if (gch->incremental_collection_will_fail(true /* consult_young */)) {
     if (Verbose && PrintGCDetails) {
       gclog_or_tty->print("CMSCollector: collect because incremental collection will fail ");
@@ -1567,6 +1591,8 @@ bool CMSCollector::shouldConcurrentCollect() {
     return true;
   }
 
+  // 元空间需要gc
+  // 这个主要是看MetaspaceGC::setShould_concurrent_collect
   if (MetaspaceGC::should_concurrent_collect()) {
       if (Verbose && PrintGCDetails) {
       gclog_or_tty->print("CMSCollector: collect for metadata allocation ");
@@ -1610,6 +1636,7 @@ void CMSCollector::clear_expansion_cause() {
 bool ConcurrentMarkSweepGeneration::should_concurrent_collect() const {
 
   assert_lock_strong(freelistLock());
+  // 超出initiating_occupancy（默认92%），gc
   if (occupancy() > initiating_occupancy()) {
     if (PrintGCDetails && Verbose) {
       gclog_or_tty->print(" %s: collect because of occupancy %f / %f  ",
@@ -1617,9 +1644,14 @@ bool ConcurrentMarkSweepGeneration::should_concurrent_collect() const {
     }
     return true;
   }
+  // UseCMSInitiatingOccupancyOnly是不做这个判断，就如英文只做initiating_occupancy判断
+  // 默认关闭
   if (UseCMSInitiatingOccupancyOnly) {
     return false;
   }
+
+  // 需要扩容？（大概是tlab空間不足）
+  // set_expansion_cause（_satisfy_allocation） =》ConcurrentMarkSweepGeneration::expand_and_allocate
   if (expansion_cause() == CMSExpansionCause::_satisfy_allocation) {
     if (PrintGCDetails && Verbose) {
       gclog_or_tty->print(" %s: collect because expanded for allocation ",
@@ -1627,6 +1659,10 @@ bool ConcurrentMarkSweepGeneration::should_concurrent_collect() const {
     }
     return true;
   }
+  // CompactibleFreeListSpace::should_concurrent_collect()
+
+  // 由於默認adaptive_freelists(UseCMSAdaptiveFreeLists)=true，所以默認都是返回false
+  // 默認不會返回gc，所以後續有時間再看
   if (_cmsSpace->should_concurrent_collect()) {
     if (PrintGCDetails && Verbose) {
       gclog_or_tty->print(" %s: collect because cmsSpace says so ",
@@ -1683,7 +1719,7 @@ void CMSCollector::request_full_gc(unsigned int full_gc_count, GCCause::Cause ca
   unsigned int gc_count = gch->total_full_collections();
   if (gc_count == full_gc_count) {
     MutexLockerEx y(CGC_lock, Mutex::_no_safepoint_check_flag);
-    _full_gc_requested = true;
+    _full_gc_requested = true;// 更新标志，异步线程去检测执行
     _full_gc_cause = cause;
     CGC_lock->notify();   // nudge CMS thread
   } else {
@@ -2217,6 +2253,7 @@ class ReleaseForegroundGC: public StackObj {
 // one "collect" method between the background collector and the foreground
 // collector but the if-then-else required made it cleaner to have
 // separate methods.
+// 后台gc
 void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Cause cause) {
   assert(Thread::current()->is_ConcurrentGC_thread(),
     "A CMS asynchronous collection is only allowed on a CMS thread.");
@@ -2227,6 +2264,7 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
     MutexLockerEx hl(Heap_lock, safepoint_check);
     FreelistLocker fll(this);
     MutexLockerEx x(CGC_lock, safepoint_check);
+    // 正在进行前台gc，不执行后台gc
     if (_foregroundGCIsActive || !UseAsyncConcMarkSweepGC) {
       // The foreground collector is active or we're
       // not using asynchronous collections.  Skip this
@@ -2235,7 +2273,7 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
       return;
     } else {
       assert(_collectorState == Idling, "Should be idling before start.");
-      _collectorState = InitialMarking;
+      _collectorState = InitialMarking;// 更新=开始cmsgc
       register_gc_start(cause);
       // Reset the expansion cause, now that we are about to begin
       // a new cycle.
@@ -2251,6 +2289,8 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
     _full_gc_requested = false;           // acks all outstanding full gc requests
     _full_gc_cause = GCCause::_no_gc;
     // Signal that we are about to start a collection
+    // fullgc次数+1 == 后台gc=fullgc
+
     gch->increment_total_full_collections();  // ... starting a collection cycle
     _collection_count_start = gch->total_full_collections();
   }
@@ -2269,6 +2309,8 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
   // The foreground collector cannot wait on a phase that is done
   // while the world is stopped because the foreground collector already
   // has the world stopped and would deadlock.
+
+  // 只要不空闲状态就一直执行
   while (_collectorState != Idling) {
     if (TraceCMSState) {
       gclog_or_tty->print_cr("Thread " INTPTR_FORMAT " in CMS state %d",
@@ -2324,11 +2366,13 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
     assert(_foregroundGCShouldWait, "Foreground collector, if active, "
       "should be waiting");
 
+    // 判断当前收集器状态
     switch (_collectorState) {
+      // 初始标记操作
       case InitialMarking:
         {
           ReleaseForegroundGC x(this);
-          stats().record_cms_begin();
+          stats().record_cms_begin();// 记录分析
           VM_CMS_Initial_Mark initial_mark_op(this);
           VMThread::execute(&initial_mark_op);
         }
@@ -3350,8 +3394,10 @@ ConcurrentMarkSweepGeneration::expand_and_allocate(size_t word_size,
                                                    bool   tlab,
                                                    bool   parallel) {
   CMSSynchronousYieldRequest yr;
+  // 意思大概是这个方法expand_and_allocate会被调用，就算因为tlab分配不够
   assert(!tlab, "Can't deal with TLAB allocation");
   MutexLockerEx x(freelistLock(), Mutex::_no_safepoint_check_flag);
+  // 需要expand
   expand(word_size*HeapWordSize, MinHeapDeltaBytes,
     CMSExpansionCause::_satisfy_allocation);
   if (GCExpandToAllocateDelayMillis > 0) {
@@ -3633,6 +3679,7 @@ void CMSCollector::checkpointRootsInitial(bool asynch) {
     checkpointRootsInitialWork(asynch);
     // enable ("weak") refs discovery
     rp->enable_discovery(true /*verify_disabled*/, true /*check_no_refs*/);
+    // 更新
     _collectorState = Marking;
   } else {
     // (Weak) Refs discovery: this is controlled from genCollectedHeap::do_collection
@@ -3652,6 +3699,7 @@ void CMSCollector::checkpointRootsInitial(bool asynch) {
 }
 
 void CMSCollector::checkpointRootsInitialWork(bool asynch) {
+  // stw判断 ==   SafepointSynchronize::is_at_safepoint()
   assert(SafepointSynchronize::is_at_safepoint(), "world should be stopped");
   assert(_collectorState == InitialMarking, "just checking");
 
@@ -3689,6 +3737,8 @@ void CMSCollector::checkpointRootsInitialWork(bool asynch) {
   // The final 'true' flag to gen_process_strong_roots will ensure this.
   // If 'async' is true, we can relax the nmethod tracing.
   MarkRefsIntoClosure notOlder(_span, &_markBitMap);
+
+  // 就是按分代的堆
   GenCollectedHeap* gch = GenCollectedHeap::heap();
 
   verify_work_stacks_empty();
@@ -3715,6 +3765,7 @@ void CMSCollector::checkpointRootsInitialWork(bool asynch) {
 
   {
     COMPILER2_PRESENT(DerivedPointerTableDeactivate dpt_deact;)
+    // 并行处理
     if (CMSParallelInitialMarkEnabled && CollectedHeap::use_parallel_gc_threads()) {
       // The parallel version.
       FlexibleWorkGang* workers = gch->workers();
@@ -3731,10 +3782,16 @@ void CMSCollector::checkpointRootsInitialWork(bool asynch) {
         tsk.work(0);
       }
       gch->set_par_threads(0);
+    // 单线程处理
     } else {
       // The serial version.
       CMKlassClosure klass_closure(&notOlder);
+
+      // 獲取remember_set
+      // rem_set()：返回CardTableRS(繼承GenRemSet)
+      // CardTableRS::prepare_for_younger_refs_iterate
       gch->rem_set()->prepare_for_younger_refs_iterate(false); // Not parallel.
+      // GenCollectedHeap::gen_process_strong_roots
       gch->gen_process_strong_roots(_cmsGen->level(),
                                     true,   // younger gens are roots
                                     true,   // activate StrongRootsScope
@@ -6620,6 +6677,7 @@ void CMSCollector::do_CMS_operation(CMS_op_type op, GCCause::Cause gc_cause) {
   TraceCollectorStats tcs(counters());
 
   switch (op) {
+    // 初始标记
     case CMS_op_checkpointRootsInitial: {
       SvcGCMarker sgcm(SvcGCMarker::OTHER);
       checkpointRootsInitial(true);       // asynch
