@@ -1107,6 +1107,7 @@ bool Monitor::wait(bool no_safepoint_check, long timeout, bool as_suspend_equiva
   if (no_safepoint_check) {
     wait_status = IWait (Self, timeout) ;
   } else {
+    // java线程需要check safepoint
     assert (Self->is_Java_thread(), "invariant") ;
     JavaThread *jt = (JavaThread *)Self;
 

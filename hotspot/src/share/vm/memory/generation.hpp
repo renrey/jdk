@@ -97,6 +97,7 @@ class Generation: public CHeapObj<mtGC> {
   // committed) for generation.
   // Used by card marking code. Must not overlap with address ranges of
   // other generations.
+  // 为当前代预留的内存（最小、最大地址），用于card marking（卡标记）
   MemRegion _reserved;
 
   // Memory area reserved for generation

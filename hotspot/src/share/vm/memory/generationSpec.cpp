@@ -50,7 +50,7 @@ Generation* GenerationSpec::init(ReservedSpace rs, int level,
 #if INCLUDE_ALL_GCS
     case Generation::ParNew:
       return new ParNewGeneration(rs, init_size(), level);
-
+    // cms下默认并行年轻代
     case Generation::ASParNew:
       return new ASParNewGeneration(rs,
                                     init_size(),
@@ -77,7 +77,7 @@ Generation* GenerationSpec::init(ReservedSpace rs, int level,
 
       return g;
     }
-
+    // 默认老年代cms
     case Generation::ASConcurrentMarkSweep: {
       assert(UseConcMarkSweepGC, "UseConcMarkSweepGC should be set");
       CardTableRS* ctrs = remset->as_CardTableRS();

@@ -582,11 +582,13 @@ void VMThread::loop() {
 }
 
 void VMThread::execute(VM_Operation* op) {
-  Thread* t = Thread::current();
+  Thread* t = Thread::current();// 当前线程t
 
   if (!t->is_VM_thread()) {
     SkipGCALot sgcalot(t);    // avoid re-entrant attempts to gc-a-lot
     // JavaThread or WatcherThread
+
+    // 检查是否可以并发执行（即其他线程不需要stw）
     bool concurrent = op->evaluate_concurrently();
     // only blocking VM operations need to verify the caller's safepoint state:
     if (!concurrent) {
@@ -616,11 +618,11 @@ void VMThread::execute(VM_Operation* op) {
     // VMOperationQueue_lock, so we can block without a safepoint check. This allows vm operation requests
     // to be queued up during a safepoint synchronization.
     {
-      VMOperationQueue_lock->lock_without_safepoint_check();
-      bool ok = _vm_queue->add(op);
+      VMOperationQueue_lock->lock_without_safepoint_check();//提交队列需要先加锁
+      bool ok = _vm_queue->add(op); // 提交到队列
     op->set_timestamp(os::javaTimeMillis());
       VMOperationQueue_lock->notify();
-      VMOperationQueue_lock->unlock();
+      VMOperationQueue_lock->unlock();// 解锁
       // VM_Operation got skipped
       if (!ok) {
         assert(concurrent, "can only skip concurrent tasks");
@@ -629,11 +631,14 @@ void VMThread::execute(VM_Operation* op) {
       }
     }
 
+    // 非并发的
     if (!concurrent) {
       // Wait for completion of request (non-concurrent)
       // Note: only a JavaThread triggers the safepoint check when locking
       MutexLocker mu(VMOperationRequest_lock);
+      // 加锁等待完成
       while(t->vm_operation_completed_count() < ticket) {
+          // 非java线程无需safepoint check
         VMOperationRequest_lock->wait(!t->is_Java_thread());
       }
     }

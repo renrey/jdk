@@ -415,15 +415,15 @@ public:
   // "SO_SystemClasses" to all the "system" classes and loaders;
   // "SO_Strings" applies the closure to all entries in the StringTable.
   void gen_process_strong_roots(int level,
-                                bool younger_gens_as_roots,
+                                bool younger_gens_as_roots, // 是否扫描年轻代作为根
                                 // The remaining arguments are in an order
                                 // consistent with SharedHeap::process_strong_roots:
                                 bool activate_scope,
                                 bool is_scavenging,
                                 SharedHeap::ScanningOption so,
-                                OopsInGenClosure* not_older_gens,
+                                OopsInGenClosure* not_older_gens, // 用于扫描非老年代的引用
                                 bool do_code_roots,
-                                OopsInGenClosure* older_gens,
+                                OopsInGenClosure* older_gens, // 用于扫描来自老年代的引用
                                 KlassClosure* klass_closure);
 
   // Apply "blk" to all the weak roots of the system.  These include

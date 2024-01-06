@@ -41,8 +41,9 @@ inline OopsInGenClosure::OopsInGenClosure(Generation* gen) :
 
 inline void OopsInGenClosure::set_generation(Generation* gen) {
   _gen = gen;
-  _gen_boundary = _gen->reserved().start();
+  _gen_boundary = _gen->reserved().start(); // 拿到对应代的用于card marking的的内存地址开始
   // Barrier set for the heap, must be set after heap is initialized
+  // 没有则获取
   if (_rs == NULL) {
     GenRemSet* rs = SharedHeap::heap()->rem_set();
     assert(rs->rs_kind() == GenRemSet::CardTable, "Wrong rem set kind");

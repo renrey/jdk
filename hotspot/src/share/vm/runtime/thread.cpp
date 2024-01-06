@@ -3390,6 +3390,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   vm_init_globals();
 
   // Attach the main thread to this os thread
+  // java主线程 关联到os线程
   JavaThread* main_thread = new JavaThread();
   main_thread->set_thread_state(_thread_in_vm);
   // must do this before set_active_handles and initialize_thread_local_storage
@@ -3445,6 +3446,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   MemTracker::start();
 
   // Create the VMThread
+  // 创建vm线程
   { TraceTime timer("Start VMThread", TraceStartupTime);
     VMThread::create();
     Thread* vmthread = VMThread::vm_thread();

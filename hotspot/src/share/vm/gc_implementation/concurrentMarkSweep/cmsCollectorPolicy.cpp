@@ -57,7 +57,9 @@ void ConcurrentMarkSweepPolicy::initialize_generations() {
   if (_generations == NULL)
     vm_exit_during_initialization("Unable to allocate gen spec");
 
+  // 多线程ParNew
   if (UseParNewGC) {
+    // 默认自适应
     if (UseAdaptiveSizePolicy) {
       _generations[0] = new GenerationSpec(Generation::ASParNew,
                                            _initial_gen0_size, _max_gen0_size);
@@ -66,13 +68,19 @@ void ConcurrentMarkSweepPolicy::initialize_generations() {
                                            _initial_gen0_size, _max_gen0_size);
     }
   } else {
+      // 单线程年轻代：DefNew
     _generations[0] = new GenerationSpec(Generation::DefNew,
                                          _initial_gen0_size, _max_gen0_size);
   }
+
+  // 老年代的
+  // 默认使用自适应的
   if (UseAdaptiveSizePolicy) {
+    // 默认使用自适应cms
     _generations[1] = new GenerationSpec(Generation::ASConcurrentMarkSweep,
                             _initial_gen1_size, _max_gen1_size);
   } else {
+    // 老年代cms
     _generations[1] = new GenerationSpec(Generation::ConcurrentMarkSweep,
                             _initial_gen1_size, _max_gen1_size);
   }

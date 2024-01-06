@@ -562,6 +562,7 @@ CMSCollector::CMSCollector(ConcurrentMarkSweepGeneration* cmsGen,
   _abort_preclean(false),
   _start_sampling(false),
   _between_prologue_and_epilogue(false),
+  // 位图：创建_markBitMap
   _markBitMap(0, Mutex::leaf + 1, "CMS_markBitMap_lock"),
   _modUnionTable((CardTableModRefBS::card_shift - LogHeapWordSize),
                  -1 /* lock-free */, "No_lock" /* dummy */),
@@ -2374,7 +2375,7 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
           ReleaseForegroundGC x(this);
           stats().record_cms_begin();// 记录分析
           VM_CMS_Initial_Mark initial_mark_op(this);
-          VMThread::execute(&initial_mark_op);
+          VMThread::execute(&initial_mark_op); // 提交给vm线程去执行（异步）
         }
         // The collector state may be any legal state at this point
         // since the background collector may have yielded to the
@@ -3733,9 +3734,9 @@ void CMSCollector::checkpointRootsInitialWork(bool asynch) {
   FalseClosure falseClosure;
   // In the case of a synchronous collection, we will elide the
   // remark step, so it's important to catch all the nmethod oops
-  // in this step.
+  // in this step. 在同步收集的情况下会忽略remark步骤，所以在这个步骤里捕获所有的nmethod oops很重要
   // The final 'true' flag to gen_process_strong_roots will ensure this.
-  // If 'async' is true, we can relax the nmethod tracing.
+  // If 'async' is true, we can relax the nmethod tracing. 如果 'async' 为 true，我们可以放宽对 nmethod 的追踪。
   MarkRefsIntoClosure notOlder(_span, &_markBitMap);
 
   // 就是按分代的堆
@@ -3791,15 +3792,15 @@ void CMSCollector::checkpointRootsInitialWork(bool asynch) {
       // rem_set()：返回CardTableRS(繼承GenRemSet)
       // CardTableRS::prepare_for_younger_refs_iterate
       gch->rem_set()->prepare_for_younger_refs_iterate(false); // Not parallel.
-      // GenCollectedHeap::gen_process_strong_roots
-      gch->gen_process_strong_roots(_cmsGen->level(),
-                                    true,   // younger gens are roots
+      // GenCollectedHeap::gen_process_strong_roots（gen_process_strong_roots(int level）
+      gch->gen_process_strong_roots(_cmsGen->level(), // 老年代就是1（gen数组的第2个）
+                                    true,   // younger gens are roots，是否扫描年轻代作为根
                                     true,   // activate StrongRootsScope
                                     false,  // not scavenging
                                     SharedHeap::ScanningOption(roots_scanning_options()),
-                                    &notOlder,
+                                    &notOlder, // 传入地址，用于扫描非老年代的引用
                                     true,   // walk all of code cache if (so & SO_CodeCache)
-                                    NULL,
+                                    NULL, // 未传入老年代
                                     &klass_closure);
     }
   }
@@ -3842,7 +3843,7 @@ bool CMSCollector::markFromRoots(bool asynch) {
     // timer since a foreground MS might has the sweep done concurrently
     // or STW.
     if (UseAdaptiveSizePolicy) {
-      size_policy()->concurrent_marking_begin();
+      size_policy()->concurrent_marking_begin();// 记录
     }
 
     // Weak ref discovery note: We may be discovering weak
@@ -4521,7 +4522,9 @@ bool CMSCollector::do_marking_st(bool asynch) {
   HandleMark   hm;
 
   // Temporarily make refs discovery single threaded (non-MT)
+  // 恢复正常线程
   ReferenceProcessorMTDiscoveryMutator rp_mut_discovery(ref_processor(), false);
+
   MarkFromRootsClosure markFromRootsClosure(this, _span, &_markBitMap,
     &_markStack, CMSYield && asynch);
   // the last argument to iterate indicates whether the iteration

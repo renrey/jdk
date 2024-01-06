@@ -678,9 +678,10 @@ void ContiguousSpace::object_iterate_mem(MemRegion mr, UpwardsObjectClosure* cl)
 
 void ContiguousSpace::oop_iterate(ExtendedOopClosure* blk) {
   if (is_empty()) return;
-  HeapWord* obj_addr = bottom();
+  HeapWord* obj_addr = bottom();//最低
   HeapWord* t = top();
   // Could call objects iterate, but this is easier.
+  // 遍历对象
   while (obj_addr < t) {
     obj_addr += oop(obj_addr)->oop_iterate(blk);
   }
@@ -690,8 +691,11 @@ void ContiguousSpace::oop_iterate(MemRegion mr, ExtendedOopClosure* blk) {
   if (is_empty()) {
     return;
   }
+  // 获取当前内存的card marking
   MemRegion cur = MemRegion(bottom(), top());
+  // 取交集
   mr = mr.intersection(cur);
+  // 没有交集，不用继续
   if (mr.is_empty()) {
     return;
   }

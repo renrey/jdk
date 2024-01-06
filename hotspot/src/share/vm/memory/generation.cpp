@@ -44,7 +44,7 @@
 #include "utilities/events.hpp"
 
 Generation::Generation(ReservedSpace rs, size_t initial_size, int level) :
-  _level(level),
+  _level(level),// _level在创建时设置，就是自己在gen数组中第n个
   _ref_processor(NULL) {
   if (!_virtual_space.initialize(rs, initial_size)) {
     vm_exit_during_initialization("Could not reserve enough space for "
@@ -56,6 +56,7 @@ Generation::Generation(ReservedSpace rs, size_t initial_size, int level) :
       (HeapWord*)_virtual_space.high());
     SpaceMangler::mangle_region(mangle_region);
   }
+  // MemRegion(MetaWord* start, MetaWord* end)
   _reserved = MemRegion((HeapWord*)_virtual_space.low_boundary(),
           (HeapWord*)_virtual_space.high_boundary());
 }
@@ -296,8 +297,9 @@ bool Generation::block_is_obj(const HeapWord* p) const {
 class GenerationOopIterateClosure : public SpaceClosure {
  public:
   ExtendedOopClosure* cl;
-  MemRegion mr;
+  MemRegion mr; //一般用于card marking的内存
   virtual void do_space(Space* s) {
+    // 年轻代： Space-》ContiguousSpace，ContiguousSpace::oop_iterate(MemRegion mr, ExtendedOopClosure* blk)
     s->oop_iterate(mr, cl);
   }
   GenerationOopIterateClosure(ExtendedOopClosure* _cl, MemRegion _mr) :
@@ -305,7 +307,11 @@ class GenerationOopIterateClosure : public SpaceClosure {
 };
 
 void Generation::oop_iterate(ExtendedOopClosure* cl) {
+    // _reserved就是预留用于card marking的内存地址
   GenerationOopIterateClosure blk(cl, _reserved);
+
+  // 就是开始扫描对
+  // 年轻代的(par也是用def)：DefNewGeneration::space_iterate(SpaceClosure* blk,
   space_iterate(&blk);
 }
 

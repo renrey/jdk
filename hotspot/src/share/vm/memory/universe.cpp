@@ -800,6 +800,7 @@ jint Universe::initialize_heap() {
       gc_policy = new MarkSweepPolicy();
     } else if (UseConcMarkSweepGC) {
 #if INCLUDE_ALL_GCS
+        // 默认自适应
       if (UseAdaptiveSizePolicy) {
         gc_policy = new ASConcurrentMarkSweepPolicy();
       } else {

@@ -633,11 +633,11 @@ class CMSCollector: public CHeapObj<mtGC> {
 
  protected:
   ConcurrentMarkSweepGeneration* _cmsGen;  // old gen (CMS)
-  MemRegion                      _span;    // span covering above two
+  MemRegion                      _span;    // span covering above two， 超过2个的范围？
   CardTableRS*                   _ct;      // card table
 
   // CMS marking support structures
-  CMSBitMap     _markBitMap;
+  CMSBitMap     _markBitMap; // 使用的位图？
   CMSBitMap     _modUnionTable;
   CMSMarkStack  _markStack;
 

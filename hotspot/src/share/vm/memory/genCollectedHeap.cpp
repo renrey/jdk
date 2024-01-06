@@ -616,19 +616,24 @@ gen_process_strong_roots(int level,
     SharedHeap::process_strong_roots(activate_scope, is_scavenging, so,
                                      not_older_gens, &code_roots, klass_closure);
   }
-
+  // 年轻代扫描
   if (younger_gens_as_roots) {
     if (!_gen_process_strong_tasks->is_task_claimed(GCH_PS_younger_gens)) {
       for (int i = 0; i < level; i++) {
-        not_older_gens->set_generation(_gens[i]);
-        _gens[i]->oop_iterate(not_older_gens);
+          // OopsInGenClosure::set_generation(Generation* gen))
+        not_older_gens->set_generation(_gens[i]);// 把具体的gen对象设置到not
+
+        // Generation::oop_iterate(ExtendedOopClosure* cl)
+        _gens[i]->oop_iterate(not_older_gens); // 遍历指针
       }
       not_older_gens->reset_generation();
     }
   }
+  // 老年代扫描，
+  // 并行时，多线程扫描老年代
   // When collection is parallel, all threads get to cooperate to do
   // older-gen scanning.
-  for (int i = level+1; i < _n_gens; i++) {
+  for (int i = level+1; i < _n_gens; i++) {// 这里level+1就是从老年代开始（传入是年轻代），如果传入是老年代不会进入循环
     older_gens->set_generation(_gens[i]);
     rem_set()->younger_refs_iterate(_gens[i], older_gens);
     older_gens->reset_generation();
