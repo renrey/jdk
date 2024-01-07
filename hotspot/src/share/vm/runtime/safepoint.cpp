@@ -94,9 +94,11 @@ static volatile int TryingToBlock = 0 ;    // proximate value -- for advisory us
 static bool timeout_error_printed = false;
 
 // Roll all threads forward to a safepoint and suspend them all
+// 推动所有线程进入safepoint,并挂起它们
 void SafepointSynchronize::begin() {
 
   Thread* myThread = Thread::current();
+  // vm线程验证
   assert(myThread->is_VM_thread(), "Only VM thread may execute a safepoint");
 
   if (PrintSafepointStatistics || PrintSafepointStatisticsTimeout > 0) {
@@ -105,10 +107,12 @@ void SafepointSynchronize::begin() {
   }
 
 #if INCLUDE_ALL_GCS
+  // cms收集
   if (UseConcMarkSweepGC) {
     // In the future we should investigate whether CMS can use the
     // more-general mechanism below.  DLD (01/05).
     ConcurrentMarkSweepThread::synchronize(false);
+  // g1收集  
   } else if (UseG1GC) {
     ConcurrentGCThread::safepoint_synchronize();
   }
@@ -154,11 +158,14 @@ void SafepointSynchronize::begin() {
   // Begin the process of bringing the system to a safepoint.
   // Java threads can be in several different states and are
   // stopped by different mechanisms:
-  //
-  //  1. Running interpreted
+  // 开启使整个系统进入safepoint，java线程在这里会有不同的状态，
+  // 然后通过下面不同的机制来停止执行：
+  //  1. Running interpreted （执行解释时）
   //     The interpeter dispatch table is changed to force it to
   //     check for a safepoint condition between bytecodes.
-  //  2. Running in native code
+  //     解释转发表（interpeter dispatch table）被强制要在每个字节码命令间检查safepoint条件
+
+  //  2. Running in native code （在执行native code时）
   //     When returning from the native code, a Java thread must check
   //     the safepoint _state to see if we must block.  If the
   //     VM thread sees a Java thread in native, it does
@@ -176,26 +183,37 @@ void SafepointSynchronize::begin() {
   //     os::serialize_thread_states() call.  This has proven to be
   //     much more efficient than executing a membar instruction
   //     on every call to native code.
-  //  3. Running compiled Code
+  //     java线程在执行native返回后，会去检查safepoint的_state看是否要堵塞停止。
+  //     而vm线程看到一个java正在执行native，则不需要等待它阻塞停止（即执行完native代码）
+  //  3. Running compiled Code（在已经jit好的代码执行）
   //     Compiled code reads a global (Safepoint Polling) page that
   //     is set to fault if we are trying to get to a safepoint.
-  //  4. Blocked
+  //     在safepoint, jit后的代码（机器码）会读到全局的page（叫做Safepoint Polling）
+  //     已经被设置故障，即Page fault
+  //  4. Blocked （线程已经被blocked）
   //     A thread which is blocked will not be allowed to return from the
   //     block condition until the safepoint operation is complete.
-  //  5. In VM or Transitioning between states
+  //     反正就是要求它在safepoint完成都不能返回
+  //  5. In VM or Transitioning between states（在vm或者线程正在切换状态）
   //     If a Java thread is currently running in the VM or transitioning
   //     between states, the safepointing code will wait for the thread to
   //     block itself when it attempts transitions to a new state.
-  //
+  //     1个java线程正在vm中执行（就是正常运行状态）或者正在切换状态，safepoint的代码
+  //     会等待线程block，这个block发生在他切换新状态时
+  
+  
+  // 更新状态_synchronizing等于告诉别的线程需要safepoint（但当前未stw）
   _state            = _synchronizing;
-  OrderAccess::fence();
+  OrderAccess::fence();// 保证顺序性、可见性，确保其他线程可看到
 
-  // Flush all thread states to memory
+  // Flush all thread states to memory，就是把所有线程状态flush到主内存
+  // 默认需要执行
   if (!UseMembar) {
     os::serialize_thread_states();
   }
 
   // Make interpreter safepoint aware
+  // 通知解析器（字节码）safepoint(TemplateInterpreter::notice_safepoints(): 就是使得使用table变成safepoint的table)
   Interpreter::notice_safepoints();
 
   if (UseCompilerSafepoints && DeferPollingPageLoopCount < 0) {
@@ -369,7 +387,7 @@ void SafepointSynchronize::begin() {
 
   // Record state
   _state = _synchronized;
-
+  // 内存屏障，保证顺序可见，确保其他线程可看到
   OrderAccess::fence();
 
 #ifdef ASSERT

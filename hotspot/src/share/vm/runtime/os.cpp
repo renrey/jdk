@@ -71,7 +71,7 @@ volatile int32_t* os::_mem_serialize_page = NULL;
 uintptr_t         os::_serialize_page_mask = 0;
 long              os::_rand_seed          = 1;
 int               os::_processor_count    = 0;
-size_t            os::_page_sizes[os::page_sizes_max];
+size_t            os::_page_sizes[os::page_sizes_max];// 是数组
 
 #ifndef PRODUCT
 julong os::num_mallocs = 0;         // # of calls to malloc/realloc
@@ -1358,19 +1358,28 @@ void os::block_on_serialize_page_trap() {
   Thread::muxRelease(&SerializePageLock);
 }
 
-// Serialize all thread state variables
+// Serialize all thread state variables 序列化（写flush）所有线程状态
 void os::serialize_thread_states() {
   // On some platforms such as Solaris & Linux, the time duration of the page
   // permission restoration is observed to be much longer than expected  due to
   // scheduler starvation problem etc. To avoid the long synchronization
   // time and expensive page trap spinning, 'SerializePageLock' is used to block
   // the mutator thread if such case is encountered. See bug 6546278 for details.
+  // 就是说在linux上，由于有调度器饥饿等原因，发现页权限恢复持续得时间比预期得要长得多。
+  // 当出现这个情况时，加入SerializePageLock来阻塞正常线程（mutator）
+  // 避免长时间同步（阻塞等待）、耗资源地对页自旋，
+  // 
+  
+  // SerializePageLock锁
   Thread::muxAcquire(&SerializePageLock, "serialize_thread_states");
+  // 就是修改mem_serialize_page这个页（还是默认os page大小，4k）的权限，用来保护内存
+  // 更新可读
   os::protect_memory((char *)os::get_memory_serialize_page(),
                      os::vm_page_size(), MEM_PROT_READ);
+  // 更新可读、可写
   os::protect_memory((char *)os::get_memory_serialize_page(),
                      os::vm_page_size(), MEM_PROT_RW);
-  Thread::muxRelease(&SerializePageLock);
+  Thread::muxRelease(&SerializePageLock);//解释
 }
 
 // Returns true if the current stack pointer is above the stack shadow
@@ -1397,6 +1406,7 @@ size_t os::page_size_for_region(size_t region_min_size, size_t region_max_size,
                                 uint min_pages)
 {
   assert(min_pages > 0, "sanity");
+  // 默认不开启大页面
   if (UseLargePages) {
     const size_t max_page_size = region_max_size / min_pages;
 

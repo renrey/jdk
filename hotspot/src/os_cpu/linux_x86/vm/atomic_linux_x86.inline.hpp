@@ -92,7 +92,7 @@ inline void*    Atomic::xchg_ptr(void*    exchange_value, volatile void*     des
 
 inline jint     Atomic::cmpxchg    (jint     exchange_value, volatile jint*     dest, jint     compare_value) {
   int mp = os::is_MP();
-  __asm__ volatile (LOCK_IF_MP(%4) "cmpxchgl %1,(%3)"
+  __asm__ volatile (LOCK_IF_MP(%4) "cmpxchgl %1,(%3)"// cmpxchgl
                     : "=a" (exchange_value)
                     : "r" (exchange_value), "a" (compare_value), "r" (dest), "r" (mp)
                     : "cc", "memory");

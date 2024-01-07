@@ -368,6 +368,7 @@ VirtualSpace::VirtualSpace() {
 
 
 bool VirtualSpace::initialize(ReservedSpace rs, size_t committed_size) {
+  // 默认（不开启大页面）就是os page大小（4k）
   const size_t max_commit_granularity = os::page_size_for_region(rs.size(), rs.size(), 1);
   return initialize_with_granularity(rs, committed_size, max_commit_granularity);
 }
@@ -377,11 +378,11 @@ bool VirtualSpace::initialize_with_granularity(ReservedSpace rs, size_t committe
   assert(_low_boundary == NULL, "VirtualSpace already initialized");
   assert(max_commit_granularity > 0, "Granularity must be non-zero.");
 
-  _low_boundary  = rs.base();
-  _high_boundary = low_boundary() + rs.size();
+  _low_boundary  = rs.base();// 最低位边界
+  _high_boundary = low_boundary() + rs.size();// 最大位边界
 
-  _low = low_boundary();
-  _high = low();
+  _low  = low_boundary();// 初始最低位
+  _high = low();// _high=_low,即初始最高位，后面一直增大
 
   _special = rs.special();
   _executable = rs.executable();
@@ -395,20 +396,26 @@ bool VirtualSpace::initialize_with_granularity(ReservedSpace rs, size_t committe
   // boost in many benchmarks when covered by large pages.
   //
   // No attempt is made to force large page alignment at the very top and
-  // bottom of the space if they are not aligned so already.
+  // bottom of the space if they are not aligned so already. 如果已经不是对齐的空间，不会尝试大页面对齐
   _lower_alignment  = os::vm_page_size();
-  _middle_alignment = max_commit_granularity;
+  _middle_alignment = max_commit_granularity;// 默认就是page_size
   _upper_alignment  = os::vm_page_size();
+  // 通过下面的其实就是包证每个region，alignment大小分隔，且region地址头尾都是n*alignment，而不是从指定地址+alignment
 
   // End of each region
+  // 每个region的界限
+
+  // 向上取整（middle_alignment的n倍）.即n个4k,4k*n >= low_boundary
   _lower_high_boundary = (char*) round_to((intptr_t) low_boundary(), middle_alignment());
+  // 向下取整（middle_alignment的m倍）,即m个4k,4k*m<= high_boundary
   _middle_high_boundary = (char*) round_down((intptr_t) high_boundary(), middle_alignment());
-  _upper_high_boundary = high_boundary();
+  _upper_high_boundary = high_boundary();// 最高界限
 
   // High address of each region
-  _lower_high = low_boundary();
-  _middle_high = lower_high_boundary();
-  _upper_high = middle_high_boundary();
+  // 每个region的当前使用的高地址--初始
+  _lower_high = low_boundary();// 初始最低
+  _middle_high = lower_high_boundary();// 4k*n, >= low_boundary（符合条件最近）
+  _upper_high = middle_high_boundary();// 4k*m,<= high_boundary（符合条件最近）
 
   // commit to initial size
   if (committed_size > 0) {
@@ -447,6 +454,7 @@ void VirtualSpace::release() {
 
 
 size_t VirtualSpace::committed_size() const {
+  // 统计这个内存区域有多少个char
   return pointer_delta(high(), low(), sizeof(char));
 }
 

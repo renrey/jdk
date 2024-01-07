@@ -162,6 +162,7 @@ class ParkEvent : public os::PlatformEvent {
        IsWaiting      = 0 ;
     }
 
+    // 就是保证最低位是0
     // We use placement-new to force ParkEvent instances to be
     // aligned on 256-byte address boundaries.  This ensures that the least
     // significant byte of a ParkEvent address is always 0.

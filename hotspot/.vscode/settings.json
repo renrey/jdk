@@ -1,0 +1,21 @@
+{
+      "files.associations": {
+            "format": "cpp",
+            "initializer_list": "cpp",
+            "utility": "cpp",
+            "xstring": "cpp",
+            "xtree": "cpp",
+            "xutility": "cpp",
+            "xlocale": "cpp",
+            "memory": "cpp",
+            "map": "cpp",
+            "iterator": "cpp",
+            "ios": "cpp",
+            "xiosbase": "cpp",
+            "xlocmon": "cpp",
+            "xlocnum": "cpp",
+            "xmemory": "cpp",
+            "iosfwd": "cpp",
+            "xlocbuf": "cpp"
+      }
+}

@@ -54,16 +54,23 @@ volatile int ParkEvent::ListLock = 0 ;
 ParkEvent * volatile ParkEvent::FreeList = NULL ;
 
 ParkEvent * ParkEvent::Allocate (Thread * t) {
+  // 分配一个停止事件（优化从freelist复用，没有再创建）
+
   // In rare cases -- JVM_RawMonitor* operations -- we can find t == null.
   ParkEvent * ev ;
 
   // Start by trying to recycle an existing but unassociated
   // ParkEvent from the global free list.
+  // 就是把freelist头节点取出来使用
   for (;;) {
+    // FreeList应该是用来复用的
     ev = FreeList ;
-    if (ev == NULL) break ;
+    if (ev == NULL) break ;// 无FreeList，直接到下一步
+
     // 1: Detach - sequester or privatize the list
     // Tantamount to ev = Swap (&FreeList, NULL)
+
+    // 把freeList置为null（中间状态），不成功就重试
     if (Atomic::cmpxchg_ptr (NULL, &FreeList, ev) != ev) {
        continue ;
     }
@@ -72,28 +79,37 @@ ParkEvent * ParkEvent::Allocate (Thread * t) {
     // local to this thread.   This thread can operate on the
     // list without risk of interference from other threads.
     // 2: Extract -- pop the 1st element from the list.
+
+    // 其实下面操作就是freelist更新成下一个节点为头的链表，因为当前的已被抽出
+
+    // 从当前ev抽出下一个
     ParkEvent * List = ev->FreeNext ;
     if (List == NULL) break ;
     for (;;) {
         // 3: Try to reattach the residual list
         guarantee (List != NULL, "invariant") ;
+        // 把下一个绑定更新到FreeList，即FreeList中间状态=null
         ParkEvent * Arv =  (ParkEvent *) Atomic::cmpxchg_ptr (List, &FreeList, NULL) ;
-        if (Arv == NULL) break ;
+        if (Arv == NULL) break ;// 更新成功
 
+        // 没成功代表有别的线程插入更新了，先重新更新FreeList=Null
         // New nodes arrived.  Try to detach the recent arrivals.
         if (Atomic::cmpxchg_ptr (NULL, &FreeList, Arv) != Arv) {
             continue ;
         }
         guarantee (Arv != NULL, "invariant") ;
+        // 把突然新插入的（变为头）加入到当前list（即刚刚抽出的下一个开始的链表）中
+        // 然后下个循环就把这个新链表重新回来（除非又有freelist这个null中间状态，又插入新的，才会继续循环）
         // 4: Merge Arv into List
         ParkEvent * Tail = List ;
-        while (Tail->FreeNext != NULL) Tail = Tail->FreeNext ;
-        Tail->FreeNext = Arv ;
+        while (Tail->FreeNext != NULL) Tail = Tail->FreeNext ;// 拿到链表最后节点
+        Tail->FreeNext = Arv ;// 加入到list最后
     }
     break ;
   }
 
   if (ev != NULL) {
+    // 复用，验证AssociatedWith是否已Null
     guarantee (ev->AssociatedWith == NULL, "invariant") ;
   } else {
     // Do this the hard way -- materialize a new ParkEvent.
@@ -111,9 +127,13 @@ ParkEvent * ParkEvent::Allocate (Thread * t) {
     // # of ParkEvents in circulation slightly above the ideal.
     // Note that if we didn't have the TSM/immortal constraint, then
     // when reattaching, above, we could trim the list.
+
+    // 没有复用的，创建新的
     ev = new ParkEvent () ;
-    guarantee ((intptr_t(ev) & 0xFF) == 0, "invariant") ;
+    guarantee ((intptr_t(ev) & 0xFF) == 0, "invariant") ;// 就是后8位应该是0
   }
+
+  // 清空原来在链表的状态，给外部使用
   ev->reset() ;                     // courtesy to caller
   ev->AssociatedWith = t ;          // Associate ev with t
   ev->FreeNext       = NULL ;

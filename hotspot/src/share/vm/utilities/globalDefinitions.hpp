@@ -274,10 +274,13 @@ inline address_word  castable_address(void* x)                { return address_w
 inline size_t pointer_delta(const void* left,
                             const void* right,
                             size_t element_size) {
+  // left、right都是地址，代表尾、头对象                            
+  // (尾-头) /1个元素大小, 即得到有多个对象？                             
   return (((uintptr_t) left) - ((uintptr_t) right)) / element_size;
 }
 // A version specialized for HeapWord*'s.
 inline size_t pointer_delta(const HeapWord* left, const HeapWord* right) {
+  // 统计有多少个HeapWord，left是尾
   return pointer_delta(left, right, sizeof(HeapWord));
 }
 // A version specialized for MetaWord*'s.
@@ -1103,20 +1106,28 @@ inline int exact_log2_long(jlong x) {
 
 
 // returns integer round-up to the nearest multiple of s (s must be a power of two)
+// 就是通过x向上取整到n*s（n*s>=x，但需要是s的倍数）
 inline intptr_t round_to(intptr_t x, uintx s) {
   #ifdef ASSERT
     if (!is_power_of_2(s)) basic_fatal("s must be a power of 2");
   #endif
-  const uintx m = s - 1;
+  const uintx m = s - 1;// 即二进制：（前面全面，n位1，后面n-1个0） =》 n=0，n-1个
+  // ~m：前面全是1，后n-1个0，对它&运算=保留头到n位的，后面全是0
   return mask_bits(x + m, ~m);
 }
 
 // returns integer round-down to the nearest multiple of s (s must be a power of two)
+// s必须是2的n次方
+// 就是通过x向下取整到n*s（n*s<=x，但需要是s的倍数）
 inline intptr_t round_down(intptr_t x, uintx s) {
   #ifdef ASSERT
     if (!is_power_of_2(s)) basic_fatal("s must be a power of 2");
   #endif
   const uintx m = s - 1;
+  // 保留x 的头到m最高位1的，后面全是0
+  // 当前x < s，最后得到0（s的0倍）
+  // 当s<=x<2s，最后得到s（s的1倍）
+  // 2s<=x<3s，得到2s，以此类推
   return mask_bits(x, ~m);
 }
 

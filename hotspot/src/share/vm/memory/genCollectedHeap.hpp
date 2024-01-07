@@ -414,6 +414,7 @@ public:
   // "SO_AllClasses" applies the closure to all entries in the SystemDictionary;
   // "SO_SystemClasses" to all the "system" classes and loaders;
   // "SO_Strings" applies the closure to all entries in the StringTable.
+  // 对level代（gen）上的root（根）执行not_older_gens或者older_gens的do_oop方法
   void gen_process_strong_roots(int level,
                                 bool younger_gens_as_roots, // 是否扫描年轻代作为根
                                 // The remaining arguments are in an order

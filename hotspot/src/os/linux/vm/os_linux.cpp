@@ -125,7 +125,7 @@ int (*os::Linux::_pthread_getcpuclockid)(pthread_t, clockid_t *) = NULL;
 Mutex* os::Linux::_createThread_lock = NULL;
 pthread_t os::Linux::_main_thread;
 int os::Linux::_page_size = -1;
-const int os::Linux::_vm_default_page_size = (8 * K);
+const int os::Linux::_vm_default_page_size = (8 * K);// 默认页大小8k
 bool os::Linux::_is_floating_stack = false;
 bool os::Linux::_is_NPTL = false;
 bool os::Linux::_supports_fast_thread_cpu_time = false;
@@ -2612,7 +2612,8 @@ int os::signal_wait() {
 
 int os::vm_page_size() {
   // Seems redundant as all get out
-  assert(os::Linux::page_size() != -1, "must call os::init");
+  //=-1, 没有调用init，等于调用了，page_size才会从默认-1更新
+  assert(os::Linux::page_size() != -1, "must call os::init");//=-1, 没有调用init，等于调用了，page_size才会从默认-1更新
   return os::Linux::page_size();
 }
 
@@ -3169,22 +3170,26 @@ static bool linux_mprotect(char* addr, size_t size, int prot) {
   assert(addr == bottom, "sanity check");
 
   size = align_size_up(pointer_delta(addr, bottom, 1) + size, os::Linux::page_size());
+  // 使用mprotect（linux的系统调用）修改指定区域的权限
   return ::mprotect(bottom, size, prot) == 0;
 }
 
 // Set protections specified
+// 通过修改内存区域权限来保护内存
 bool os::protect_memory(char* addr, size_t bytes, ProtType prot,
                         bool is_committed) {
   unsigned int p = 0;
+  // 现成的包含策略（就mprotect的参数）
   switch (prot) {
   case MEM_PROT_NONE: p = PROT_NONE; break;
-  case MEM_PROT_READ: p = PROT_READ; break;
-  case MEM_PROT_RW:   p = PROT_READ|PROT_WRITE; break;
+  case MEM_PROT_READ: p = PROT_READ; break;// 可读
+  case MEM_PROT_RW:   p = PROT_READ|PROT_WRITE; break; // 可读写
   case MEM_PROT_RWX:  p = PROT_READ|PROT_WRITE|PROT_EXEC; break;
   default:
     ShouldNotReachHere();
   }
   // is_committed is unused.
+  // 通过linux的mprotect指令来修改这个区域权限
   return linux_mprotect(addr, bytes, p);
 }
 
@@ -4734,12 +4739,13 @@ void os::init(void) {
   init_random(1234567);
 
   ThreadCritical::initialize();
-
+  // 初始更新page_size, 使用os当前内存page大小，一般最少4kb
   Linux::set_page_size(sysconf(_SC_PAGESIZE));
   if (Linux::page_size() == -1) {
     fatal(err_msg("os_linux.cpp: os::init: sysconf failed (%s)",
                   strerror(errno)));
   }
+  // 初始化os的page_sizes数组
   init_page_sizes((size_t) Linux::page_size());
 
   Linux::initialize_system_info();

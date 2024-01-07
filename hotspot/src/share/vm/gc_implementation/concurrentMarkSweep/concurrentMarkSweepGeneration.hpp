@@ -74,14 +74,18 @@ class SerialOldTracer;
 // we have _shifter == 0. and for the mod union table we have
 // shifter == CardTableModRefBS::card_shift - LogHeapWordSize.)
 // XXX 64-bit issues in BitMap?
+// 一种通用的cms位图，用于cms标记、mod uniontalbe的基础（都是使用一部分方法）。
+// 1bit代表1个heapwords
+// 这里举了个例子:用于marking bit map,_shifter=0; 
+// mod union table 则是shifter == CardTableModRefBS::card_shift - LogHeapWordSize
 class CMSBitMap VALUE_OBJ_CLASS_SPEC {
   friend class VMStructs;
 
-  HeapWord* _bmStartWord;   // base address of range covered by map
+  HeapWord* _bmStartWord;   // base address of range covered by map，这个map所代表内存范围的开始地址
   size_t    _bmWordSize;    // map size (in #HeapWords covered)
-  const int _shifter;       // shifts to convert HeapWord to bit position
+  const int _shifter;       // shifts to convert HeapWord to bit position 转换heapword在所在bit的偏移量
   VirtualSpace _virtual_space; // underlying the bit map
-  BitMap    _bm;            // the bit map itself
+  BitMap    _bm;            // the bit map itself，位图原始结构对象
  public:
   Mutex* const _lock;       // mutex protecting _bm;
 

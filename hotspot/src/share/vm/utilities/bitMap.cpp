@@ -449,18 +449,23 @@ bool BitMap::iterate(BitMapClosure* blk, idx_t leftOffset, idx_t rightOffset) {
   verify_range(leftOffset, rightOffset);
 
   idx_t startIndex = word_index(leftOffset);
-  idx_t endIndex   = MIN2(word_index(rightOffset) + 1, size_in_words());
+  idx_t endIndex   = MIN2(word_index(rightOffset) + 1, size_in_words());// min大概就是怕超出了
   for (idx_t index = startIndex, offset = leftOffset;
        offset < rightOffset && index < endIndex;
        offset = (++index) << LogBitsPerWord) {
     idx_t rest = map(index) >> (offset & (BitsPerWord - 1));
+    // 就是从左往右执行do_bit, rest==NoBits（0）即到最后了
+    // 
     for (; offset < rightOffset && rest != (bm_word_t)NoBits; offset++) {
+      // 应该还是是否等于=0（没了）
       if (rest & 1) {
+        // 执行do_bit
         if (!blk->do_bit(offset)) return false;
         //  resample at each closure application
         // (see, for instance, CMS bug 4525989)
         rest = map(index) >> (offset & (BitsPerWord -1));
       }
+      // 右移1位
       rest = rest >> 1;
     }
   }

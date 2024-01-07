@@ -3746,7 +3746,7 @@ void CMSCollector::checkpointRootsInitialWork(bool asynch) {
   verify_overflow_empty();
 
   gch->ensure_parsability(false);  // fill TLABs, but no need to retire them
-  // Update the saved marks which may affect the root scans.
+  // Update the saved marks which may affect the root scans.更新已save的mark，这些mark会影响root扫描
   gch->save_marks();
 
   // weak reference processing has not started yet.
@@ -3793,6 +3793,7 @@ void CMSCollector::checkpointRootsInitialWork(bool asynch) {
       // CardTableRS::prepare_for_younger_refs_iterate
       gch->rem_set()->prepare_for_younger_refs_iterate(false); // Not parallel.
       // GenCollectedHeap::gen_process_strong_roots（gen_process_strong_roots(int level）
+      // 对这个（level）老年代执行扫描root的操作
       gch->gen_process_strong_roots(_cmsGen->level(), // 老年代就是1（gen数组的第2个）
                                     true,   // younger gens are roots，是否扫描年轻代作为根
                                     true,   // activate StrongRootsScope
@@ -3853,8 +3854,11 @@ bool CMSCollector::markFromRoots(bool asynch) {
     CMSTokenSyncWithLocks ts(true, bitMapLock());
     TraceCPUTime tcpu(PrintGCDetails, true, gclog_or_tty);
     CMSPhaseAccounting pa(this, "mark", !PrintGCDetails);
+
+    // 执行从root开始扫描
     res = markFromRootsWork(asynch);
     if (res) {
+      // 成功变为preclean状态
       _collectorState = Precleaning;
     } else { // We failed and a foreground collection wants to take over
       assert(_foregroundGCIsActive, "internal state inconsistency");
@@ -3908,9 +3912,11 @@ bool CMSCollector::markFromRootsWork(bool asynch) {
   verify_work_stacks_empty();
   verify_overflow_empty();
   bool result = false;
+  // 多线程并行
   if (CMSConcurrentMTEnabled && ConcGCThreads > 0) {
     result = do_marking_mt(asynch);
   } else {
+    // 单线程
     result = do_marking_st(asynch);
   }
   return result;
@@ -4525,6 +4531,7 @@ bool CMSCollector::do_marking_st(bool asynch) {
   // 恢复正常线程
   ReferenceProcessorMTDiscoveryMutator rp_mut_discovery(ref_processor(), false);
 
+  // 创建MarkFromRoots闭包操作对象
   MarkFromRootsClosure markFromRootsClosure(this, _span, &_markBitMap,
     &_markStack, CMSYield && asynch);
   // the last argument to iterate indicates whether the iteration
@@ -4533,6 +4540,8 @@ bool CMSCollector::do_marking_st(bool asynch) {
   // If _restart_addr is non-NULL, a marking stack overflow
   // occurred; we need to do a fresh iteration from the
   // indicated restart address.
+
+  // 这里代表marking栈溢出，需要重新执行新的遍历迭代
   while (_restart_addr != NULL) {
     if (_foregroundGCIsActive && asynch) {
       // We may be running into repeated stack overflows, having
@@ -5074,6 +5083,7 @@ void CMSCollector::checkpointRootsFinal(bool asynch,
   assert(_collectorState == FinalMarking, "incorrect state transition?");
   check_correct_thread_executing();
   // world is stopped at this checkpoint
+  // 验证全都stw（只有vm线程），代表这个不是并发
   assert(SafepointSynchronize::is_at_safepoint(),
          "world should be stopped");
   TraceCMSMemoryManagerStats tms(_collectorState,GenCollectedHeap::heap()->gc_cause());
@@ -6785,6 +6795,8 @@ CMSBitMap::CMSBitMap(int shifter, int mutex_rank, const char* mutex_name):
 }
 
 bool CMSBitMap::allocate(MemRegion mr) {
+  // mr等于1个内存Region的封装对象（上层）
+
   _bmStartWord = mr.start();
   _bmWordSize  = mr.word_size();
   ReservedSpace brs(ReservedSpace::allocation_align_size_up(
@@ -6801,6 +6813,7 @@ bool CMSBitMap::allocate(MemRegion mr) {
   }
   assert(_virtual_space.committed_size() == brs.size(),
          "didn't reserve backing store for all of CMS bit map?");
+  //        
   _bm.set_map((BitMap::bm_word_t*)_virtual_space.low());
   assert(_virtual_space.committed_size() << (_shifter + LogBitsPerByte) >=
          _bmWordSize, "inconsistency in bit map sizing");

@@ -61,6 +61,7 @@ class SafepointSynchronize : AllStatic {
       _not_synchronized = 0,                   // Threads not synchronized at a safepoint
                                                // Keep this value 0. See the coment in do_call_back()
       _synchronizing    = 1,                   // Synchronizing in progress
+      // 所有java线程停止（stw）,只有vm线程运行
       _synchronized     = 2                    // All Java threads are stopped at a safepoint. Only VM thread is running
   };
 
@@ -135,7 +136,9 @@ public:
 
   // Roll all threads forward to safepoint. Must be called by the
   // VMThread or CMS_thread.
+  // 推动所有线程进入safepoint，必须通过vm线程或者cms线程调用触发
   static void begin();
+  // 重新启动所有挂起线程
   static void end();                    // Start all suspended threads again...
 
   static bool safepoint_safe(JavaThread *thread, JavaThreadState state);

@@ -114,7 +114,7 @@ class ReservedCodeSpace : public ReservedSpace {
 };
 
 // VirtualSpace is data structure for committing a previously reserved address range in smaller chunks.
-
+// 用于以更小的chunk块来提交之前已预留的空间范围
 class VirtualSpace VALUE_OBJ_CLASS_SPEC {
   friend class VMStructs;
  private:
@@ -165,11 +165,15 @@ class VirtualSpace VALUE_OBJ_CLASS_SPEC {
   size_t upper_alignment() const { return _upper_alignment; }
 
  public:
+  // 注意这里都是使用char（8bit），作为操作的元素
   // Committed area
+  // 已提交的内存，即已实际使用了
   char* low()  const { return _low; }
   char* high() const { return _high; }
 
   // Reserved area
+  // char占8bit
+  // 这个2个界限就是预留地址的界限
   char* low_boundary()  const { return _low_boundary; }
   char* high_boundary() const { return _high_boundary; }
 

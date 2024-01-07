@@ -113,12 +113,15 @@ public:
 
   CardTableModRefBS* ct_bs() { return _ct_bs; }
 
+  // prepare_for_younger_refs_iterate、younger_refs_iterate都是GenMemset定义，作用可看
+
   // Override.
   void prepare_for_younger_refs_iterate(bool parallel);
 
   // Card table entries are cleared before application; "blk" is
   // responsible for dirtying if the oop is still older-to-younger after
   // closure application.
+  // 在执行前，card card的每个项会被clear；如果在OopsInGenClosure操作后oop仍然老->年轻，blk用于变脏操作
   void younger_refs_iterate(Generation* g, OopsInGenClosure* blk);
 
   void inline_write_ref_field_gc(void* field, oop new_val) {

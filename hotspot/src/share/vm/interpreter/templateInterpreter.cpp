@@ -54,6 +54,7 @@ void TemplateInterpreter::initialize() {
   }
 
   // initialize dispatch table
+  // 默认使用正常table
   _active_table = _normal_table;
 }
 
@@ -610,9 +611,11 @@ static inline void copy_table(address* from, address* to, int size) {
 }
 
 void TemplateInterpreter::notice_safepoints() {
+  // 就是被触发过就不会继续触发
   if (!_notice_safepoints) {
     // switch to safepoint dispatch table
-    _notice_safepoints = true;
+    _notice_safepoints = true;// 切成safepoint的转发table
+    // 就是拷贝safept_table的指针到active_table（即active_table的地址指针都是safe_table的指针）
     copy_table((address*)&_safept_table, (address*)&_active_table, sizeof(_active_table) / sizeof(address));
   }
 }
@@ -626,7 +629,7 @@ void TemplateInterpreter::ignore_safepoints() {
   if (_notice_safepoints) {
     if (!JvmtiExport::should_post_single_step()) {
       // switch to normal dispatch table
-      _notice_safepoints = false;
+      _notice_safepoints = false;// 需要切换回正常转发table
       copy_table((address*)&_normal_table, (address*)&_active_table, sizeof(_active_table) / sizeof(address));
     }
   }

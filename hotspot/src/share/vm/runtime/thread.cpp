@@ -4527,33 +4527,59 @@ typedef volatile intptr_t MutexT ;      // Mux Lock-word
 enum MuxBits { LOCKBIT = 1 } ;
 
 void Thread::muxAcquire (volatile intptr_t * Lock, const char * LockName) {
+  // LockBit代表用来做锁的标志（用&来得到锁标志的是否1-》判断是否0，>0就是置为1），
+  // 主要使用最低位（值就是1，所以就算最低位是锁标志）
+
+  
+  // 1，尝试无锁状态（lock=0,无等待队列线程，无竞争）下cas（跟jdk一样）
   intptr_t w = Atomic::cmpxchg_ptr (LOCKBIT, Lock, 0) ;
-  if (w == 0) return ;
+  if (w == 0) return ;// 加锁成功，（cmpxchg_ptr返回比较值-》更新成功）
+  
+  // w & LOCKBIT ==0即 最低位=0 ，就是当前没线程拿到锁资源，但有等待队列有现线程
+  // 2、（第1次，下面可能会自旋这个）当前无锁，但有等待线程（竞争）
+  // 就是把最低位置为1？
   if ((w & LOCKBIT) == 0 && Atomic::cmpxchg_ptr (w|LOCKBIT, Lock, w) == w) {
      return ;
   }
 
   TEVENT (muxAcquire - Contention) ;
+
+  // 注意：ParkEvent对象的地址最低永远是0
+  // 当前线程的_MuxEvent（ParkEvent）
   ParkEvent * const Self = Thread::current()->_MuxEvent ;
+  // 安全验证（正常self是没变过，=0）
   assert ((intptr_t(Self) & LOCKBIT) == 0, "invariant") ;
+
   for (;;) {
+     // 自旋次数，非多核就不自旋了：再执行1次
+     // 多核自旋 101次？
      int its = (os::is_MP() ? 100 : 0) + 1 ;
 
      // Optional spin phase: spin-then-park strategy
+     // 自旋锁（尝试无锁有竞争情况）
      while (--its >= 0) {
        w = *Lock ;
+       // & =0，代表无锁
+       // 无锁才能cas，
+       // w|LOCKBIT = 把最低位置为1，即锁位=1
+       // 这里成功上锁（返回是原来比较值w代表更新成功），返回
        if ((w & LOCKBIT) == 0 && Atomic::cmpxchg_ptr (w|LOCKBIT, Lock, w) == w) {
           return ;
        }
      }
 
+     //4. 自旋失败（自旋竞争多次失败），准备进入队列阻塞等待
+
+     // 准备？
      Self->reset() ;
-     Self->OnList = intptr_t(Lock) ;
+     Self->OnList = intptr_t(Lock) ;// 代表在哪个用途的链表
      // The following fence() isn't _strictly necessary as the subsequent
      // CAS() both serializes execution and ratifies the fetched *Lock value.
-     OrderAccess::fence();
+     OrderAccess::fence();// 保证上面的可见
+
      for (;;) {
         w = *Lock ;
+        // 无锁尝试竞争
         if ((w & LOCKBIT) == 0) {
             if (Atomic::cmpxchg_ptr (w|LOCKBIT, Lock, w) == w) {
                 Self->OnList = 0 ;   // hygiene - allows stronger asserts
@@ -4562,12 +4588,22 @@ void Thread::muxAcquire (volatile intptr_t * Lock, const char * LockName) {
             continue ;      // Interference -- *Lock changed -- Just retry
         }
         assert (w & LOCKBIT, "invariant") ;
+
+        // 因为ParkEvent对象的地址最低永远是0
+
+        // 当前线程的下一个: 指向当前lock里保存的event对象地址
         Self->ListNext = (ParkEvent *) (w & ~LOCKBIT );
+        // 这里是用自己event对象指针|LOCKBIT，更新到lock
+        // 等于当前线程变成队列头？只需对lock进行cas即可
+        // 如果加入链表尾，则是先
         if (Atomic::cmpxchg_ptr (intptr_t(Self)|LOCKBIT, Lock, w) == w) break ;
      }
 
+     // 交互的信号量，2种情况
+     // 1. 被唤醒时，判断自己是否当前拥有，不等于0（代表是）就退出循环执行正常代码，不是则继续阻塞
+     // 2. 准备进入阻塞前，被别的线程设置（即解锁时）成当前锁拥有线程
      while (Self->OnList != 0) {
-        Self->park() ;
+        Self->park() ;// 阻塞
      }
   }
 }
@@ -4654,21 +4690,31 @@ void Thread::muxAcquireW (volatile intptr_t * Lock, ParkEvent * ev) {
 
 void Thread::muxRelease (volatile intptr_t * Lock)  {
   for (;;) {
+    // 1. 尝试Lock当前只有锁位=1（其他位都是0，即LOCKBIT）下释放（全部变0）
     const intptr_t w = Atomic::cmpxchg_ptr (0, Lock, LOCKBIT) ;
     assert (w & LOCKBIT, "invariant") ;
-    if (w == LOCKBIT) return ;
+    if (w == LOCKBIT) return ;// 更新成功
+
+    // 下面就是其他位有1的情况（等待队列有线程）
+
+    // w & ~LOCKBIT ，拿到当前lock，前面的值，最低位=0
+    // 然后这个值是链表里的ParkEvent地址
     ParkEvent * List = (ParkEvent *) (w & ~LOCKBIT) ;
     assert (List != NULL, "invariant") ;
     assert (List->OnList == intptr_t(Lock), "invariant") ;
+    // 取出当前的下一个线程的ParkEvent地址
     ParkEvent * nxt = List->ListNext ;
 
     // The following CAS() releases the lock and pops the head element.
+    // 2. cas更新下一个的指针到Lock
     if (Atomic::cmpxchg_ptr (intptr_t(nxt), Lock, w) != w) {
+      // 失败，从头重试
       continue ;
     }
-    List->OnList = 0 ;
-    OrderAccess::fence() ;
-    List->unpark () ;
+    // 把下一个线程成功更新到线程，唤醒这个线程，等于告诉他拿到锁（已从等待队列出队）
+    List->OnList = 0 ;// 等于已出队
+    OrderAccess::fence() ;// 保证上面的顺序可见
+    List->unpark () ;// 唤醒
     return ;
   }
 }

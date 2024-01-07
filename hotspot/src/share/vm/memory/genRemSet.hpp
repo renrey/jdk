@@ -78,12 +78,16 @@ public:
 
   // Do any (sequential) processing necessary to prepare for (possibly
   // "parallel", if that arg is true) calls to younger_refs_iterate.
+  // 为执行younger_refs_iterate做前置准备
   virtual void prepare_for_younger_refs_iterate(bool parallel) = 0;
 
   // Apply the "do_oop" method of "blk" to (exactly) all oop locations
   //  1) that are in objects allocated in "g" at the time of the last call
   //     to "save_Marks", and
   //  2) that point to objects in younger generations.
+  // 对所有指定位置执行blk的do_oop方法，这些位置为：
+  // 1、在最后一次调用 "save_Marks" 时在 "g" 中分配的对象所在的
+  // 2、指向年轻代对象的区域
   virtual void younger_refs_iterate(Generation* g, OopsInGenClosure* blk) = 0;
 
   virtual void younger_refs_in_space_iterate(Space* sp,

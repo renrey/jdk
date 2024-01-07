@@ -33,14 +33,14 @@ class BitMapClosure;
 
 // Operations for bitmaps represented as arrays of unsigned integers.
 // Bit offsets are numbered from 0 to size-1.
-
+// 这个bitmap用以无符号整数数组表示，offset从0到size-1
 class BitMap VALUE_OBJ_CLASS_SPEC {
   friend class BitMap2D;
 
  public:
-  typedef size_t idx_t;         // Type used for bit and word indices.
+  typedef size_t idx_t;         // Type used for bit and word indices.，用来表示bit和word索引
   typedef uintptr_t bm_word_t;  // Element type of array that represents
-                                // the bitmap.
+                                // the bitmap.，用来表示bitmap的数组里元素类型
 
   // Hints for range sizes.
   typedef enum {
@@ -49,8 +49,8 @@ class BitMap VALUE_OBJ_CLASS_SPEC {
 
  private:
   ArrayAllocator<bm_word_t, mtInternal> _map_allocator;
-  bm_word_t* _map;     // First word in bitmap
-  idx_t      _size;    // Size of bitmap (in bits)
+  bm_word_t* _map;     // First word in bitmap，bitmap第一个word
+  idx_t      _size;    // Size of bitmap (in bits)，大小=多少个bit
 
   // Puts the given value at the given offset, using resize() to size
   // the bitmap appropriately if needed using factor-of-two expansion.
