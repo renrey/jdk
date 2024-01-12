@@ -137,7 +137,7 @@ class MetaWord {
 };
 
 // HeapWordSize must be 2^LogHeapWordSize.
-const int HeapWordSize        = sizeof(HeapWord);
+const int HeapWordSize        = sizeof(HeapWord);// 8b，因为只有1个char指针（64位os下是64位二进制数字，os基础单位是b，所以就是8b）
 #ifdef _LP64
 const int LogHeapWordSize     = 3;
 #else
@@ -721,14 +721,22 @@ class JavaValue {
 // state when it comes to machine representation but is used separately for (oop)
 // type specific operations (e.g. verification code).
 
+// tos：top of statck，栈顶
+// tosstate描述了字节码pr方法执行前后的tos状态
+// tos的值可能会缓存在多个cpu 寄存器种
+// tosstate对应了机器表示
+// 4种java type，第5时tos的值在内存栈中但没被缓存
+// atosui应
 enum TosState {         // describes the tos cache contents
   btos = 0,             // byte, bool tos cached
   ctos = 1,             // char tos cached
   stos = 2,             // short tos cached
+
   itos = 3,             // int tos cached
   ltos = 4,             // long tos cached
   ftos = 5,             // float tos cached
   dtos = 6,             // double tos cached
+  
   atos = 7,             // object cached
   vtos = 8,             // tos not cached
   number_of_states,
@@ -998,6 +1006,7 @@ const intptr_t OneBit     =  1; // only right_most bit set in a word
 
 // get a word with the n.th or the right-most or left-most n bits set
 // (note: #define used only so that they can be used in enum constant definitions)
+// right_n_bits就是右边n位全为1，其他全置为0
 #define nth_bit(n)        (n >= BitsPerWord ? 0 : OneBit << (n))
 #define right_n_bits(n)   (nth_bit(n) - 1)
 #define left_n_bits(n)    (right_n_bits(n) << (n >= BitsPerWord ? 0 : (BitsPerWord - n)))

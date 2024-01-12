@@ -340,7 +340,7 @@ class Universe: AllStatic {
   // For UseCompressedOops
   // Narrow Oop encoding mode:
   // 0 - Use 32-bits oops without encoding when
-  //     NarrowOopHeapBaseMin + heap_size < 4Gb
+  //     NarrowOopHeapBaseMin + heap_size < 4Gb 就是32位下才能使用，
   // 1 - Use zero based compressed oops with encoding when
   //     NarrowOopHeapBaseMin + heap_size < 32Gb
   // 2 - Use compressed oops with heap base + encoding.

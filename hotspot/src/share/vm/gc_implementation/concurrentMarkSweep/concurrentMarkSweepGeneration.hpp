@@ -1396,6 +1396,7 @@ class FalseClosure: public OopClosure {
 
 // This closure is used to do concurrent marking from the roots
 // following the first checkpoint.
+// 在 第一个checkpoint后，从多个root开始执行并发标记 
 class MarkFromRootsClosure: public BitMapClosure {
   CMSCollector*  _collector;
   MemRegion      _span;
@@ -1427,6 +1428,7 @@ class MarkFromRootsClosure: public BitMapClosure {
 // XXX This should really be a subclass of The serial version
 // above, but i have not had the time to refactor things cleanly.
 // That willbe done for Dolphin.
+// 多线程并发标记
 class Par_MarkFromRootsClosure: public BitMapClosure {
   CMSCollector*  _collector;
   MemRegion      _whole_span;
@@ -1458,6 +1460,7 @@ class Par_MarkFromRootsClosure: public BitMapClosure {
 
 // The following closures are used to do certain kinds of verification of
 // CMS marking.
+// 在cms 标记阶段进行验证的函数
 class PushAndMarkVerifyClosure: public CMSOopClosure {
   CMSCollector*    _collector;
   MemRegion        _span;
@@ -1503,6 +1506,7 @@ class MarkFromRootsVerifyClosure: public BitMapClosure {
 
 // This closure is used to check that a certain set of bits is
 // "empty" (i.e. the bit vector doesn't have any 1-bits).
+// 验证一组bit是否空（例如字节向量，没有1bit）
 class FalseBitMapClosure: public BitMapClosure {
  public:
   bool do_bit(size_t offset) {
@@ -1522,6 +1526,9 @@ class FalseBitMapClosure: public BitMapClosure {
 // closures that update it; however, this closure itself only
 // reads the bit_map and because it is idempotent, is immune to
 // reading stale values.
+// 使用在第2个checkpoint阶段，去重新扫描mode union table、 card table 里被脏卡标记的对象
+// 会调用MarkFromDirtyCardsClosure函数
+// 其中会使用MarkRefsIntoAndScanClosure去完成大部分工作
 class ScanMarkedObjectsAgainClosure: public UpwardsObjectClosure {
   #ifdef ASSERT
     CMSCollector*          _collector;
@@ -1582,6 +1589,10 @@ class ScanMarkedObjectsAgainClosure: public UpwardsObjectClosure {
 // ScanMarkedObjectsAgainClosure above to accomplish much of its work.
 // In the parallel case, the bit map is shared and requires
 // synchronized access.
+// 从脏卡从开始标记的操作函数
+// 在第二个checkpoint检查的阶段，去重新扫描 mod union table里、 cardtalbe里 的那些在脏卡中被标记对象
+// 会调用ScanMarkedObjectsAgainClosure完成大部分工作
+// 在并行阶段，位图是共享的、且需要同步权限
 class MarkFromDirtyCardsClosure: public MemRegionClosure {
   CompactibleFreeListSpace*      _space;
   ScanMarkedObjectsAgainClosure  _scan_cl;
@@ -1628,6 +1639,9 @@ class FalseMemRegionClosure: public MemRegionClosure {
 // to "carefully" rescan marked objects on dirty cards.
 // It uses MarkRefsIntoAndScanClosure declared in genOopClosures.hpp
 // to accomplish some of its work.
+// 使用在precleaning阶段的函数
+// 去仔细地重新扫描在脏卡中被标记的对象
+// 实际使用MarkRefsIntoAndScanClosure函数来完成
 class ScanMarkedObjectsAgainCarefullyClosure: public ObjectClosureCareful {
   CMSCollector*                  _collector;
   MemRegion                      _span;
@@ -1674,6 +1688,7 @@ class ScanMarkedObjectsAgainCarefullyClosure: public ObjectClosureCareful {
   void do_yield_work();
 };
 
+// 应该是做Suvivor区域预先清理
 class SurvivorSpacePrecleanClosure: public ObjectClosureCareful {
   CMSCollector*                  _collector;
   MemRegion                      _span;
@@ -1729,6 +1744,14 @@ class SurvivorSpacePrecleanClosure: public ObjectClosureCareful {
 // _lastFreeRangeCoalesced is true if the LHC consists of more than one chunk.
 // _freeRangeInFreeLists is true if the LHC is in the free lists.
 // _freeFinger is the address of the current LHC
+// 用于在第2个checkpoint后、并发rest前，完成清除（sweep）工作
+// 术语
+// 左侧块（LHC） - 当前正在被合并（coalesce）的一个或多个块。 LHC可用于与新块合并（coalesce）。
+// 右侧块（RHC） - 当前正在被扫描（swept）的块，可能是空闲的或可以与LHC合并（coalesce）的垃圾。
+// 如果当前存在LHC，则 _inFreeRange 为true
+// 如果LHC由多个块组成，则 _lastFreeRangeCoalesced 为true。
+// 如果LHC在空闲列表中，则 _freeRangeInFreeLists 为true。
+// _freeFinger 是当前LHC的地址。
 class SweepClosure: public BlkClosureCareful {
   CMSCollector*                  _collector;  // collector doing the work
   ConcurrentMarkSweepGeneration* _g;    // Generation being swept
@@ -1831,9 +1854,13 @@ class SweepClosure: public BlkClosureCareful {
 // work-routine/closure used to complete transitive
 // marking of objects as live after a certain point
 // in which an initial set has been completely accumulated.
+
 // This closure is currently used both during the final
 // remark stop-world phase, as well as during the concurrent
 // precleaning of the discovered reference lists.
+// 主要是弱引用（ weak references）处理相关
+// 当在进行弱引用处理中，这是用于在初始集合完全累积之后，完成传递性'标记对象存活'的1个工作例程/闭包
+// 这个函数主要用在最终标记阶段（final remark）、还有并发preclean引用list
 class CMSDrainMarkingStackClosure: public VoidClosure {
   CMSCollector*        _collector;
   MemRegion            _span;
@@ -1860,6 +1887,7 @@ class CMSDrainMarkingStackClosure: public VoidClosure {
 };
 
 // A parallel version of CMSDrainMarkingStackClosure above.
+// 并行即多线程版本CMSDrainMarkingStackClosure
 class CMSParDrainMarkingStackClosure: public VoidClosure {
   CMSCollector*           _collector;
   MemRegion               _span;
@@ -1884,6 +1912,7 @@ class CMSParDrainMarkingStackClosure: public VoidClosure {
 
 // Allow yielding or short-circuiting of reference list
 // prelceaning work.
+//  允许在引用列表预清理(preclean)工作中进行让步(yeild)或短路。
 class CMSPrecleanRefsYieldClosure: public YieldClosure {
   CMSCollector* _collector;
   void do_yield_work();

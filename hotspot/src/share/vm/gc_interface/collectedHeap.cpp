@@ -186,6 +186,7 @@ void CollectedHeap::collect_as_vm_thread(GCCause::Cause cause) {
   assert(Heap_lock->is_locked(), "Precondition#2");
   GCCauseSetter gcs(this, cause);
   switch (cause) {
+    // 3种fullgc（不会清理软引用）的原因
     case GCCause::_heap_inspection:
     case GCCause::_heap_dump:
     case GCCause::_metadata_GC_threshold : {
@@ -193,6 +194,7 @@ void CollectedHeap::collect_as_vm_thread(GCCause::Cause cause) {
       do_full_collection(false);        // don't clear all soft refs
       break;
     }
+    // 会清理软引用的fullgc
     case GCCause::_last_ditch_collection: {
       HandleMark hm;
       do_full_collection(true);         // do clear all soft refs

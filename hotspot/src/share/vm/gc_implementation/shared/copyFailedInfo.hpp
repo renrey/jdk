@@ -38,14 +38,16 @@ class CopyFailedInfo : public CHeapObj<mtGC> {
   CopyFailedInfo() : _first_size(0), _smallest_size(0), _total_size(0), _count(0) {}
 
   virtual void register_copy_failure(size_t size) {
+    // 没有登记过
     if (_first_size == 0) {
       _first_size = size;
       _smallest_size = size;
+    // 登记过，如果大小之前登记过的还小更新最小  
     } else if (size < _smallest_size) {
       _smallest_size = size;
     }
-    _total_size += size;
-    _count++;
+    _total_size += size;// 这轮copy失败的所有对象大小
+    _count++;// 这轮失败对象数量
   }
 
   virtual void reset() {

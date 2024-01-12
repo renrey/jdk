@@ -245,10 +245,14 @@ inline bool
 CollectedHeap::promotion_should_fail(volatile size_t* count) {
   // Access to count is not atomic; the value does not have to be exact.
   if (PromotionFailureALot) {
+    // 已经开始过的gc次数
     const size_t gc_num = total_collections();
+    // 大概就是已完成的gc数？
     const size_t elapsed_gcs = gc_num - _promotion_failure_alot_gc_number;
     if (elapsed_gcs >= PromotionFailureALotInterval) {
       // Test for unsigned arithmetic wrap-around.
+      // count+1(_promotion_failure_alot_count -> 等于进行promotion_should_fail判断次数)
+      // 超过PromotionFailureALotCount，代表晋升失败，把统计归0
       if (++*count >= PromotionFailureALotCount) {
         *count = 0;
         return true;

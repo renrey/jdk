@@ -125,6 +125,8 @@ class ScanClosure: public OopsInKlassOrGenClosure {
 // This closure only performs barrier store calls on
 // pointers into the DefNewGeneration. This is less
 // precise, but faster, than a ScanClosure
+// 用于扫描DefNewGeneration
+// 仅对指向 DefNewGeneration 的指针执行屏障存储调用，比起ScanClosure精准差了，但是更快
 class FastScanClosure: public OopsInKlassOrGenClosure {
  protected:
   DefNewGeneration* _g;

@@ -304,9 +304,16 @@ class oopDesc {
 
   bool is_scavengable() const;
 
+  // Forward pointer=> 向前指针
+  // 目前应该是在scavenge收集器中使用
+  // 前向指针是一个特殊的指针，指向对象在垃圾收集后的新位置或标记状态
+  // 有助于确保在垃圾收集过程中，即使对象被 “移动 ”，程序仍然可以正确地访问这些对象
+  // gc中·前向指针通常用于在遍历对象图时更新引用，以确保引用关系的正确性
+
   // Forward pointer operations for scavenge
   bool is_forwarded() const;
 
+  // 应该就是具体执行Forward pointer操作
   void forward_to(oop p);
   bool cas_forward_to(oop p, markOop compare);
 

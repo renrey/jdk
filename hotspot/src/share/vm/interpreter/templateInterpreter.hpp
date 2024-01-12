@@ -69,6 +69,7 @@ class DispatchTable VALUE_OBJ_CLASS_SPEC {
  public:
   // Attributes
   EntryPoint entry(int i) const;                      // return entry point for a given bytecode i
+  // 给字节码（即i位置的，Bytecode）更新成entry
   void       set_entry(int i, EntryPoint& entry);     // set    entry point for a given bytecode i
   address*   table_for(TosState state)          { return _table[state]; }
   address*   table_for()                        { return table_for((TosState)0); }
@@ -153,9 +154,9 @@ class TemplateInterpreter: public AbstractInterpreter {
   // Code generation
 #ifndef PRODUCT
   static address    trace_code    (TosState state)              { return _trace_code.entry(state); }
-#endif // !PRODUCT
+#endif // !PRODzUCT
   static address    continuation  (TosState state)              { return _continuation_entry.entry(state); }
-  static address*   dispatch_table(TosState state)              { return _active_table.table_for(state); }
+  static address*   cc(TosState state)              { return _active_table.table_for(state); }
   static address*   dispatch_table()                            { return _active_table.table_for(); }
   static int        distance_from_dispatch_table(TosState state){ return _active_table.distance_from(state); }
   static address*   normal_table(TosState state)                { return _normal_table.table_for(state); }

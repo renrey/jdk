@@ -114,6 +114,8 @@ class Copy : AllStatic {
   static void aligned_disjoint_words(HeapWord* from, HeapWord* to, size_t count) {
     assert_params_aligned(from, to);
     assert_disjoint(from, to, count);
+
+    // 对象对齐的word、分离disjoint
     pd_aligned_disjoint_words(from, to, count);
   }
 

@@ -104,6 +104,7 @@ class JavaThread;
 class markOopDesc: public oopDesc {
  private:
   // Conversion
+  // 就是使用当前指针地址作为值
   uintptr_t value() const { return (uintptr_t) this; }
 
  public:
@@ -121,19 +122,19 @@ class markOopDesc: public oopDesc {
   // contiguous to the lock bits.
   enum { lock_shift               = 0,
          biased_lock_shift        = lock_bits,
-         age_shift                = lock_bits + biased_lock_bits,
+         age_shift                = lock_bits + biased_lock_bits, // 3，从低4位开始
          cms_shift                = age_shift + age_bits,
          hash_shift               = cms_shift + cms_bits,
          epoch_shift              = hash_shift
   };
 
-  enum { lock_mask                = right_n_bits(lock_bits),
-         lock_mask_in_place       = lock_mask << lock_shift,
-         biased_lock_mask         = right_n_bits(lock_bits + biased_lock_bits),
-         biased_lock_mask_in_place= biased_lock_mask << lock_shift,
+  enum { lock_mask                = right_n_bits(lock_bits),//11
+         lock_mask_in_place       = lock_mask << lock_shift,//11
+         biased_lock_mask         = right_n_bits(lock_bits + biased_lock_bits), // 111,就是低n位全是1，前面全是0
+         biased_lock_mask_in_place= biased_lock_mask << lock_shift, // 111
          biased_lock_bit_in_place = 1 << biased_lock_shift,
-         age_mask                 = right_n_bits(age_bits),
-         age_mask_in_place        = age_mask << age_shift,
+         age_mask                 = right_n_bits(age_bits),// 1111
+         age_mask_in_place        = age_mask << age_shift,// 1111000
          epoch_mask               = right_n_bits(epoch_bits),
          epoch_mask_in_place      = epoch_mask << epoch_shift,
          cms_mask                 = right_n_bits(cms_bits),
@@ -155,11 +156,11 @@ class markOopDesc: public oopDesc {
                             (address_word)hash_mask << hash_shift;
 #endif
 
-  enum { locked_value             = 0,
-         unlocked_value           = 1,
-         monitor_value            = 2,
-         marked_value             = 3,
-         biased_lock_pattern      = 5
+  enum { locked_value             = 0,  // 低2位00（重量锁）
+         unlocked_value           = 1, // 低2位01
+         monitor_value            = 2, // 低2位10（轻量锁）
+         marked_value             = 3, // 低2位11
+         biased_lock_pattern      = 5  // 101(偏量锁)
   };
 
   enum { no_hash                  = 0 };  // no hash value assigned
@@ -179,6 +180,7 @@ class markOopDesc: public oopDesc {
   // fixes up biased locks to be compatible with it when a bias is
   // revoked.
   bool has_bias_pattern() const {
+    // 是否处于偏向锁（101）
     return (mask_bits(value(), biased_lock_mask_in_place) == biased_lock_pattern);
   }
   JavaThread* biased_locker() const {
@@ -212,13 +214,13 @@ class markOopDesc: public oopDesc {
 
   // lock accessors (note that these assume lock_shift == 0)
   bool is_locked()   const {
-    return (mask_bits(value(), lock_mask_in_place) != unlocked_value);
+    return (mask_bits(value(), lock_mask_in_place) != unlocked_value); // 低2位不是01（无锁or偏向锁），就是锁
   }
   bool is_unlocked() const {
-    return (mask_bits(value(), biased_lock_mask_in_place) == unlocked_value);
+    return (mask_bits(value(), biased_lock_mask_in_place) == unlocked_value);// 低2位是01（偏向锁实际也算是无竞争）
   }
   bool is_marked()   const {
-    return (mask_bits(value(), lock_mask_in_place) == marked_value);
+    return (mask_bits(value(), lock_mask_in_place) == marked_value);// 低2位11，代表被标记-清理标记了
   }
   bool is_neutral()  const { return (mask_bits(value(), biased_lock_mask_in_place) == unlocked_value); }
 
@@ -336,8 +338,13 @@ class markOopDesc: public oopDesc {
   uint    age()               const { return mask_bits(value() >> age_shift, age_mask); }
   markOop set_age(uint v) const {
     assert((v & ~age_mask) == 0, "shouldn't overflow age field");
+    // 
+    // (uintptr_t)v & age_mask<< age_shift :保留后4位（即不超过15），然后左移3位
     return markOop((value() & ~age_mask_in_place) | (((uintptr_t)v & age_mask) << age_shift));
   }
+  // 年龄+1
+  // 达到达到最大年龄不会+1, 返回当前地址
+  // 可以+1，则返回以年龄位+1的markword值的地址
   markOop incr_age()          const { return age() == max_age ? markOop(this) : set_age(age() + 1); }
 
   // hash operations
@@ -351,6 +358,8 @@ class markOopDesc: public oopDesc {
 
   // Prototype mark for initialization
   static markOop prototype() {
+    // 返回指针地址，这个地址（64位or32位）就是当作默认值
+    // 默认值0...001（代表无锁、无hashcode）
     return markOop( no_hash_in_place | no_lock_in_place );
   }
 

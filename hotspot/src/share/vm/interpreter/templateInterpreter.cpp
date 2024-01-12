@@ -139,7 +139,7 @@ EntryPoint DispatchTable::entry(int i) const {
     );
 }
 
-
+// tabble不同xxos的当前字节码的 变为对应entry种对应xxos的的
 void DispatchTable::set_entry(int i, EntryPoint& entry) {
   assert(0 <= i && i < length, "index out of bounds");
   assert(number_of_states == 9, "check the code below");
@@ -331,6 +331,8 @@ void TemplateInterpreterGenerator::generate_all() {
   }
 
   { CodeletMark cm(_masm, "safepoint entry points");
+    // 定义了safepoint table（每个entry），解释到时，具体需要执行的方法
+    // tos就是栈顶状态缓存
     Interpreter::_safept_entry =
       EntryPoint(
         generate_safept_entry_for(btos, CAST_FROM_FN_PTR(address, InterpreterRuntime::at_safepoint)),
@@ -430,6 +432,7 @@ void TemplateInterpreterGenerator::set_entry_points_for_all_bytes() {
 void TemplateInterpreterGenerator::set_safepoints_for_all_bytes() {
   for (int i = 0; i < DispatchTable::length; i++) {
     Bytecodes::Code code = (Bytecodes::Code)i;
+    // 更新字节码为InterpreterRuntime::at_safepoint
     if (Bytecodes::is_defined(code)) Interpreter::_safept_table.set_entry(code, Interpreter::_safept_entry);
   }
 }
@@ -470,7 +473,9 @@ void TemplateInterpreterGenerator::set_entry_points(Bytecodes::Code code) {
     set_wide_entry_point(t, wep);
   }
   // set entry points
+  // 生成entry
   EntryPoint entry(bep, cep, sep, aep, iep, lep, fep, dep, vep);
+  // 给当前字节码放入，entry
   Interpreter::_normal_table.set_entry(code, entry);
   Interpreter::_wentry_point[code] = wep;
 }

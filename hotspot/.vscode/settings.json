@@ -16,6 +16,12 @@
             "xlocnum": "cpp",
             "xmemory": "cpp",
             "iosfwd": "cpp",
-            "xlocbuf": "cpp"
+            "xlocbuf": "cpp",
+            "system_error": "cpp",
+            "atomic": "cpp",
+            "locale": "cpp",
+            "charconv": "cpp",
+            "cstring": "cpp",
+            "xlocinfo": "cpp"
       }
 }

@@ -716,7 +716,7 @@ CMSCollector::CMSCollector(ConcurrentMarkSweepGeneration* cmsGen,
   // 默认50%
   _bootstrap_occupancy = ((double)CMSBootstrapOccupancy)/(double)100;
 
-  _full_gcs_since_conc_gc = 0;
+  _full_gcs_since_conc_gc = 0;// 默认初始化
 
   // Now tell CMS generations the identity of their collector
   ConcurrentMarkSweepGeneration::set_collector(this);
@@ -1089,9 +1089,11 @@ void CMSCollector::promoted(bool par, HeapWord* start,
   assert(_markBitMap.covers(start), "Out of bounds");
   // See comment in direct_allocated() about when objects should
   // be allocated live.
+  // 并发标记开始之后都可以
   if (_collectorState >= Marking) {
     // we already hold the marking bit map lock, taken in
     // the prologue
+    // 标记在_markBitMap
     if (par) {
       _markBitMap.par_mark(start);
     } else {
@@ -1107,9 +1109,11 @@ void CMSCollector::promoted(bool par, HeapWord* start,
     // is in flux from being free to being allocated (and in
     // transition while being copied into) and subsequently
     // becoming a bona-fide object when the copy/promotion is complete.
+    
+    // 代表了晋升的时候就是stw 
     assert(SafepointSynchronize::is_at_safepoint(),
            "expect promotion only at safepoints");
-
+    // 进入清理阶段前       
     if (_collectorState < Sweeping) {
       // Mark the appropriate cards in the modUnionTable, so that
       // this object gets scanned before the sweep. If this is
@@ -1117,6 +1121,8 @@ void CMSCollector::promoted(bool par, HeapWord* start,
       // not get marked.
       // For the case of arrays, which are otherwise precisely
       // marked, we need to dirty the entire array, not just its head.
+
+      // 标记_modUnionTable
       if (is_obj_array) {
         // The [par_]mark_range() method expects mr.end() below to
         // be aligned to the granularity of a bit's representation
@@ -1272,6 +1278,7 @@ CMSCollector::allocation_limit_reached(Space* space, HeapWord* top,
   return NULL;
 }
 
+// 年轻代晋升老年代
 oop ConcurrentMarkSweepGeneration::promote(oop obj, size_t obj_size) {
   assert(obj_size == (size_t)obj->size(), "bad obj_size passed in");
   // allocate, copy and if necessary update promoinfo --
@@ -1283,10 +1290,13 @@ oop ConcurrentMarkSweepGeneration::promote(oop obj, size_t obj_size) {
     return NULL;
   }
 #endif  // #ifndef PRODUCT
-
+  // 晋升CompactibleFreeListSpace::promote
   oop res = _cmsSpace->promote(obj, obj_size);
+
+  // 失败
   if (res == NULL) {
     // expand and retry
+    // 扩容
     size_t s = _cmsSpace->expansionSpaceRequired(obj_size);  // HeapWords
     expand(s*HeapWordSize, MinHeapDeltaBytes,
       CMSExpansionCause::_satisfy_promotion);
@@ -1295,12 +1305,15 @@ oop ConcurrentMarkSweepGeneration::promote(oop obj, size_t obj_size) {
     assert(next_gen() == NULL, "assumption, based upon which no attempt "
                                "is made to pass on a possibly failing "
                                "promotion to next generation");
+    // 再次晋升
     res = _cmsSpace->promote(obj, obj_size);
   }
+  // 晋升成功
   if (res != NULL) {
     // See comment in allocate() about when objects should
     // be allocated live.
     assert(obj->is_oop(), "Will dereference klass pointer below");
+    // 做mark
     collector()->promoted(false,           // Not parallel
                           (HeapWord*)res, obj->is_objArray(), obj_size);
     // promotion counters
@@ -1712,6 +1725,7 @@ void CMSCollector::collect(bool   full,
     return;
   }
   acquire_control_and_collect(full, clear_all_soft_refs);
+  // 用于多少次fullgc后压缩的计数，与CMSFullGCsBeforeCompaction比较的
   _full_gcs_since_conc_gc++;
 }
 
@@ -1750,24 +1764,31 @@ void CMSCollector::report_concurrent_mode_interruption() {
 
 // The foreground and background collectors need to coordinate in order
 // to make sure that they do not mutually interfere with CMS collections.
+// 前台收集器和后台收集器需要协调，以确保它们不会相互干扰CMS gc过程。
 // When a background collection is active,
 // the foreground collector may need to take over (preempt) and
 // synchronously complete an ongoing collection. Depending on the
 // frequency of the background collections and the heap usage
 // of the application, this preemption can be seldom or frequent.
+// 当后台收集活动时，前台收集器可能需要接管（抢占）并同步完成正在进行的收集。
+// 根据后台收集的频率、应用程序的堆使用情况，这种抢占可能是偶尔的或频繁的。
 // There are only certain
 // points in the background collection that the "collection-baton"
 // can be passed to the foreground collector.
+// 只有在后台收集的某些特定的点上，"collection-baton"才能传递给前台收集器。
 //
 // The foreground collector will wait for the baton before
 // starting any part of the collection.  The foreground collector
 // will only wait at one location.
+// 在开始gc前，前台收集器会等待baton。前台收集器只会在一个位置等待。
 //
 // The background collector will yield the baton before starting a new
 // phase of the collection (e.g., before initial marking, marking from roots,
 // precleaning, final re-mark, sweep etc.)  This is normally done at the head
 // of the loop which switches the phases. The background collector does some
 // of the phases (initial mark, final re-mark) with the world stopped.
+// 在开启gc的一个新阶段前（cms各个阶段，例如在初始标记前），后台收集器会让出baton
+// 这一般在循环头中切换阶段时完成，后台收集器在执行某些阶段（初始标记、最终重新标记）时会停止整个程序的执行。
 // Because of locking involved in stopping the world,
 // the foreground collector should not block waiting for the background
 // collector when it is doing a stop-the-world phase.  The background
@@ -1777,43 +1798,49 @@ void CMSCollector::report_concurrent_mode_interruption() {
 // phase has not changed, it proceeds with the collection.  If the
 // phase has changed, it skips that phase of the collection.  See
 // the comments on the use of the Heap_lock in collect_in_background().
+// 由于锁包含stw，当后台收集器执行stw阶段时，前台收集器不应阻塞去等待后台收集器。
+// 后台收集器将在进入stw阶段之前的另一个点放弃"baton" -》 这里等于说了stw阶段应该让前台去执行
+// 一旦stw，后台收集器会检查当前gc的阶段。如果阶段未更改，它将继续进行hc。
+// 如果阶段已更改，则跳过该阶段。请参阅collect_in_background()中对Heap_lock使用的注释。
 //
-// Variable used in baton passing.
+// 总结:stw阶段会让前台去执行，后台收集器是通过让出baton，来让前台不阻塞唤醒执行的
+// Variable used in baton passing.（baton传递使用的变量）
 //   _foregroundGCIsActive - Set to true by the foreground collector when
 //      it wants the baton.  The foreground clears it when it has finished
-//      the collection.
+//      the collection. true代表前台收集器想要baton时，当完成gc时，前台清理这个变量
 //   _foregroundGCShouldWait - Set to true by the background collector
 //        when it is running.  The foreground collector waits while
-//      _foregroundGCShouldWait is true.
+//      _foregroundGCShouldWait is true. true代表后台收集器正在运行，前台收集器在这个变量true时阻塞等待
 //  CGC_lock - monitor used to protect access to the above variables
-//      and to notify the foreground and background collectors.
-//  _collectorState - current state of the CMS collection.
+//      and to notify the foreground and background collectors. 用于保护上面的变量，通知唤醒前、后台收集器的monitor对象
+//  _collectorState - current state of the CMS collection. 当前cms gc的状态
 //
-// The foreground collector
-//   acquires the CGC_lock
-//   sets _foregroundGCIsActive
-//   waits on the CGC_lock for _foregroundGCShouldWait to be false
-//     various locks acquired in preparation for the collection
-//     are released so as not to block the background collector
-//     that is in the midst of a collection
-//   proceeds with the collection
-//   clears _foregroundGCIsActive
+// The foreground collector 前台
+//   acquires the CGC_lock 获取CGC_Lock
+//   sets _foregroundGCIsActive 设置前台GCactive
+//   waits on the CGC_lock for _foregroundGCShouldWait to be false 等待CGC_lock中前台应该等待变量变为false（不需要等待）
+//     various locks acquired in preparation for the collection 
+//     are released so as not to block the background collector 
+//     that is in the midst of a collection 为了不阻塞正在进行收集的后台收集器，释放了为准备gc而获取的各种lock。
+//   proceeds with the collection 进行gc
+//   clears _foregroundGCIsActive 清理当前前台gc生效中
 //   returns
 //
 // The background collector in a loop iterating on the phases of the
-//      collection
-//   acquires the CGC_lock
-//   sets _foregroundGCShouldWait
-//   if _foregroundGCIsActive is set
+//      collection 后台收集器一直循环，其中涉及gc的不同阶段
+//   acquires the CGC_lock 获取lock
+//   sets _foregroundGCShouldWait 设置相反前台需要等待
+//   if _foregroundGCIsActive is set 如果设置了进行前台gc
 //     clears _foregroundGCShouldWait, notifies _CGC_lock
 //     waits on _CGC_lock for _foregroundGCIsActive to become false
-//     and exits the loop.
-//   otherwise
-//     proceed with that phase of the collection
-//     if the phase is a stop-the-world phase,
-//       yield the baton once more just before enqueueing
-//       the stop-world CMS operation (executed by the VM thread).
-//   returns after all phases of the collection are done
+//     and exits the loop. 清空_foregroundGCShouldWait、唤醒等待_CGC_lock其他线程，然后阻塞等待_CGC_lock，
+//       等待_foregroundGCIsActive=false被唤醒，最后退出循环
+//   otherwise 就是没设置前台进行
+//     proceed with that phase of the collection 执行gc
+//     if the phase is a stop-the-world phase, 如果当前阶段是stw阶段，
+//       yield the baton once more just before enqueueing 
+//       the stop-world CMS operation (executed by the VM thread). 会在stw操作入队前（通过vm线程执行），再次让出baton
+//   returns after all phases of the collection are done 返回gc完成（所有阶段已完成）
 //
 
 void CMSCollector::acquire_control_and_collect(bool full,
@@ -1887,6 +1914,7 @@ void CMSCollector::acquire_control_and_collect(bool full,
 
   // Check if we need to do a compaction, or if not, whether
   // we need to start the mark-sweep from scratch.
+  // 验证是否需要执行一次压缩，如果不需要，则看是否需要从头（scratch）开始标记-清理
   bool should_compact    = false;
   bool should_start_over = false;
   decide_foreground_collection_type(clear_all_soft_refs,
@@ -1908,7 +1936,8 @@ NOT_PRODUCT(
     report_concurrent_mode_interruption();
   }
 
-  set_did_compact(should_compact);
+  set_did_compact(should_compact);、
+  // 执行压缩！！！
   if (should_compact) {
     // If the collection is being acquired from the background
     // collector, there may be references on the discovered
@@ -1924,7 +1953,7 @@ NOT_PRODUCT(
     if (first_state > Idling) {
       save_heap_summary();
     }
-
+    // 执行压缩
     do_compaction_work(clear_all_soft_refs);
 
     // Has the GC time limit been exceeded?
@@ -1942,6 +1971,7 @@ NOT_PRODUCT(
                                            gc_cause,
                                            gch->collector_policy());
   } else {
+    // 就是不用压缩，就得执行执行ms的gc
     do_mark_sweep_work(clear_all_soft_refs, first_state,
       should_start_over);
   }
@@ -1986,16 +2016,27 @@ void CMSCollector::decide_foreground_collection_type(
            "Should have been noticed, reacted to and cleared");
     _cmsGen->set_incremental_collection_failed();
   }
+  // 第一种压缩清况的判断（3种情况）
+  // 1. 开启了UseCMSCompactAtFullCollection（在fullgc时压缩）
+  // 
+  // 2. 下面其中一个符合
+  //     2.1) _full_gcs_since_conc_gc （实际是collect时+1，但是实际执行清理就归0）超过CMSFullGCsBeforeCompaction
+//             这个fullGc次数应该是代表在一次完整gc完成（执行完sweep清理）前，触发了多少次需要fullgc
+  //     2.2) 用户显示调用gc
+  //     2.3 ) 增量gc失败？
   *should_compact =
     UseCMSCompactAtFullCollection &&
     ((_full_gcs_since_conc_gc >= CMSFullGCsBeforeCompaction) ||
      GCCause::is_user_requested_gc(gch->gc_cause()) ||
      gch->incremental_collection_will_fail(true /* consult_young */));
+
   *should_start_over = false;
+  // 需要清理软引用时
   if (clear_all_soft_refs && !*should_compact) {
     // We are about to do a last ditch collection attempt
     // so it would normally make sense to do a compaction
     // to reclaim as much space as possible.
+    // 需要清理软引用时, 且开启了CMSCompactWhenClearAllSoftRefs，需要压缩
     if (CMSCompactWhenClearAllSoftRefs) {
       // Default: The rationale is that in this case either
       // we are past the final marking phase, in which case
@@ -2026,6 +2067,7 @@ void CMSCollector::decide_foreground_collection_type(
 
 // A work method used by the foreground collector to do
 // a mark-sweep-compact.
+// 根据注释，可知这是前台收集器用来msc操作的方法（即压缩是前台执行的）
 void CMSCollector::do_compaction_work(bool clear_all_soft_refs) {
   GenCollectedHeap* gch = GenCollectedHeap::heap();
 
@@ -2042,6 +2084,7 @@ void CMSCollector::do_compaction_work(bool clear_all_soft_refs) {
   }
 
   // Sample collection interval time and reset for collection pause.
+  // 采样(sample)收集间隔时间和重置收集暂停。
   if (UseAdaptiveSizePolicy) {
     size_policy()->msc_collection_begin();
   }
@@ -2060,9 +2103,11 @@ void CMSCollector::do_compaction_work(bool clear_all_soft_refs) {
   // Temporarily make reference _discovery_ single threaded (non-MT)
   ReferenceProcessorMTDiscoveryMutator rp_mut_discovery(ref_processor(), false);
 
+  // 引用处理的配置
   ref_processor()->set_enqueuing_is_done(false);
   ref_processor()->enable_discovery(false /*verify_disabled*/, false /*check_no_refs*/);
-  ref_processor()->setup_policy(clear_all_soft_refs);
+  ref_processor()->setup_policy(clear_all_soft_refs); //设置引用处理策略
+  
   // If an asynchronous collection finishes, the _modUnionTable is
   // all clear.  If we are assuming the collection from an asynchronous
   // collection, clear the _modUnionTable.
@@ -2084,9 +2129,12 @@ void CMSCollector::do_compaction_work(bool clear_all_soft_refs) {
                                             _inter_sweep_estimate.padded_average(),
                                             _intra_sweep_estimate.padded_average());
   }
-
+  // 前面有地方触发了safepoint
+  // GenMarkSweep就是分代的标记清理-》就是执行serial old
   GenMarkSweep::invoke_at_safepoint(_cmsGen->level(),
     ref_processor(), clear_all_soft_refs);
+
+  
   #ifdef ASSERT
     CompactibleFreeListSpace* cms_space = _cmsGen->cmsSpace();
     size_t free_size = cms_space->free();
@@ -2161,6 +2209,7 @@ void CMSCollector::do_mark_sweep_work(bool clear_all_soft_refs,
       // required.
       _collectorState = FinalMarking;
   }
+  // 触发前台gc
   collect_in_foreground(clear_all_soft_refs, GenCollectedHeap::heap()->gc_cause());
 
   // For a mark-sweep, compute_new_size() will be called
@@ -2233,7 +2282,9 @@ class ReleaseForegroundGC: public StackObj {
     assert(_c->_foregroundGCShouldWait, "Else should not need to call");
     MutexLockerEx x(CGC_lock, Mutex::_no_safepoint_check_flag);
     // allow a potentially blocked foreground collector to proceed
+    // 更新变量，告诉前台不用阻塞
     _c->_foregroundGCShouldWait = false;
+    // 需要_foregroundGCIsActive = true，才唤醒锁的另一个线程（前台）
     if (_c->_foregroundGCIsActive) {
       CGC_lock->notify();
     }
@@ -2244,6 +2295,7 @@ class ReleaseForegroundGC: public StackObj {
   ~ReleaseForegroundGC() {
     assert(!_c->_foregroundGCShouldWait, "Usage protocol violation?");
     MutexLockerEx x(CGC_lock, Mutex::_no_safepoint_check_flag);
+    // 让前台继续等待
     _c->_foregroundGCShouldWait = true;
   }
 };
@@ -2317,26 +2369,30 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
       gclog_or_tty->print_cr("Thread " INTPTR_FORMAT " in CMS state %d",
         Thread::current(), _collectorState);
     }
-    // The foreground collector
-    //   holds the Heap_lock throughout its collection.
-    //   holds the CMS token (but not the lock)
+    // The foreground collector 前台收集器。
+    //   holds the Heap_lock throughout its collection. 持有了Heap_lock在他进行gc时
+    //   holds the CMS token (but not the lock)  持有CMS token除非在等待后台收集器让出时。
     //     except while it is waiting for the background collector to yield.
     //
-    // The foreground collector should be blocked (not for long)
+    // The foreground collector should be blocked (not for long) 
     //   if the background collector is about to start a phase
     //   executed with world stopped.  If the background
     //   collector has already started such a phase, the
     //   foreground collector is blocked waiting for the
     //   Heap_lock.  The stop-world phases (InitialMarking and FinalMarking)
     //   are executed in the VM thread.
+    // 如果后台c准备开始一个会stw的阶段，前台c应该阻塞（不会阻塞太久)
+    // 如过后台c已经开始这样的阶段，前台c应该阻塞等待Heap_lock
+    // stw阶段（InitialMarking、 FinalMarking）都是通过vm线程执行的
     //
-    // The locking order is
-    //   PendingListLock (PLL)  -- if applicable (FinalMarking)
-    //   Heap_lock  (both this & PLL locked in VM_CMS_Operation::prologue())
+    // The locking order is                                    lock顺序：
+    //   PendingListLock (PLL)  -- if applicable (FinalMarking) PLL锁 -- 最终标记阶段
+    //   Heap_lock  (both this & PLL locked in VM_CMS_Operation::prologue()) Heap_lock （这个跟PLL都会锁住在VM_CMS_Operation::prologue()）
     //   CMS token  (claimed in
     //                stop_world_and_do() -->
     //                  safepoint_synchronize() -->
     //                    CMSThread::synchronize())
+    // 
 
     {
       // Check if the FG collector wants us to yield.
@@ -2372,6 +2428,7 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
       // 初始标记操作
       case InitialMarking:
         {
+          // 释放唤醒前台收集器
           ReleaseForegroundGC x(this);
           stats().record_cms_begin();// 记录分析
           VM_CMS_Initial_Mark initial_mark_op(this);
@@ -2381,8 +2438,10 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
         // since the background collector may have yielded to the
         // foreground collector.
         break;
+      // 并发标记  
       case Marking:
         // initial marking in checkpointRootsInitialWork has been completed
+        // 执行从root开始标记
         if (markFromRoots(true)) { // we were successful
           assert(_collectorState == Precleaning, "Collector state should "
             "have changed");
@@ -2395,6 +2454,8 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
           size_policy()->concurrent_precleaning_begin();
         }
         // marking from roots in markFromRoots has been completed
+        // 代表从root开始向下标记已完成
+        // 执行preclean
         preclean();
         if (UseAdaptiveSizePolicy) {
           size_policy()->concurrent_precleaning_end();
@@ -2407,6 +2468,7 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
         if (UseAdaptiveSizePolicy) {
         size_policy()->concurrent_phases_resume();
         }
+        // 执行abortable_preclean
         abortable_preclean();
         if (UseAdaptiveSizePolicy) {
           size_policy()->concurrent_precleaning_end();
@@ -2414,15 +2476,19 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
         assert(_collectorState == FinalMarking, "Collector state should "
           "have changed");
         break;
+      // 最终标记
       case FinalMarking:
         {
+          // 释放唤醒前台收集器
           ReleaseForegroundGC x(this);
-
+          // 生成最终标记的任务对象
           VM_CMS_Final_Remark final_remark_op(this);
+          // 交给vm线程执行（因为stw）
           VMThread::execute(&final_remark_op);
         }
         assert(_foregroundGCShouldWait, "block post-condition");
         break;
+      // 清理阶段  
       case Sweeping:
         if (UseAdaptiveSizePolicy) {
           size_policy()->concurrent_sweeping_begin();
@@ -2431,6 +2497,7 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
         sweep(true);
         assert(_collectorState == Resizing, "Collector state change "
           "to Resizing must be done under the free_list_lock");
+        // 执完成清理就重置？    
         _full_gcs_since_conc_gc = 0;
 
         // Stop the timers for adaptive size policy for the concurrent phases
@@ -4587,6 +4654,7 @@ void CMSCollector::preclean() {
     }
     TraceCPUTime tcpu(PrintGCDetails, true, gclog_or_tty);
     CMSPhaseAccounting pa(this, "preclean", !PrintGCDetails);
+    // CMSPrecleanRefLists1：：默认开启，CMSPrecleanRefLists1：默认关闭
     preclean_work(CMSPrecleanRefLists1, CMSPrecleanSurvivors1);
   }
   CMSTokenSync x(true); // is cms thread

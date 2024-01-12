@@ -824,6 +824,7 @@ jint Universe::initialize_heap() {
   }
 
 #ifdef _LP64
+  // 使用压缩指针
   if (UseCompressedOops) {
     // Subtract a page because something can get allocated at heap base.
     // This also makes implicit null checking work, because the
@@ -860,6 +861,7 @@ jint Universe::initialize_heap() {
 #endif //  _WIN64
       if((uint64_t)Universe::heap()->reserved_region().end() > UnscaledOopHeapMax) {
         // Can't reserve heap below 4Gb.
+        // 不能预留heap少于4gb
         Universe::set_narrow_oop_shift(LogMinObjAlignmentInBytes);
       } else {
         Universe::set_narrow_oop_shift(0);
@@ -886,6 +888,7 @@ jint Universe::initialize_heap() {
   // We will never reach the CATCH below since Exceptions::_throw will cause
   // the VM to exit if an exception is thrown during initialization
 
+  // tlab初始化
   if (UseTLAB) {
     assert(Universe::heap()->supports_tlab_allocation(),
            "Should support thread-local allocation buffers");
@@ -942,9 +945,14 @@ ReservedSpace Universe::reserve_heap(size_t heap_size, size_t alignment) {
     return total_rs;
   }
 
+  // 开启压缩指针
   if (UseCompressedOops) {
     // Universe::initialize_heap() will reset this to NULL if unscaled
     // or zero-based narrow oops are actually used.
+    // 这里说了如果策略是unscaled、zero-based，在Universe::initialize_heap()
+    // 还是重置
+
+    // 隔了1个page？
     address base = (address)(total_rs.base() - os::vm_page_size());
     Universe::set_narrow_oop_base(base);
   }

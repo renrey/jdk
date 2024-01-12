@@ -54,6 +54,7 @@ class Closure : public StackObj {
 };
 
 // OopClosure is used for iterating through references to Java objects.
+// 用于遍历java对象的引用
 
 class OopClosure : public Closure {
  public:

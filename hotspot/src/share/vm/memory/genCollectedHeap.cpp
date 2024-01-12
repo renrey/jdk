@@ -197,6 +197,7 @@ char* GenCollectedHeap::allocate(size_t alignment,
   *_total_reserved = total_reserved;
   *_n_covered_regions = n_covered_regions;
 
+   // 预留内存
   *heap_rs = Universe::reserve_heap(total_reserved, alignment);
   return heap_rs->base();
 }
@@ -495,6 +496,7 @@ void GenCollectedHeap::do_collection(bool  full,
           } else {
             // collect() below will enable discovery as appropriate
           }
+          // 主动前台触发fullgc
           _gens[i]->collect(full, do_clear_all_soft_refs, size, is_tlab);
           if (!rp->enqueuing_is_done()) {
             rp->enqueue_discovered_references();
@@ -737,6 +739,7 @@ void GenCollectedHeap::collect_locked(GCCause::Cause cause, int max_level) {
   unsigned int full_gc_count_before = total_full_collections();
   {
     MutexUnlocker mu(Heap_lock);  // give up heap lock, execute gets it back
+    // fullgc
     VM_GenCollectFull op(gc_count_before, full_gc_count_before,
                          cause, max_level);
     VMThread::execute(&op);
@@ -794,7 +797,8 @@ void GenCollectedHeap::do_full_collection(bool clear_all_soft_refs,
   } else {
     local_max_level = max_level;
   }
-
+  
+  // 执行1次fullgc
   do_collection(true                 /* full */,
                 clear_all_soft_refs  /* clear_all_soft_refs */,
                 0                    /* size */,

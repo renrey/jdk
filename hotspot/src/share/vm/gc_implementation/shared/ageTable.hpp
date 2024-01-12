@@ -57,7 +57,7 @@ class ageTable VALUE_OBJ_CLASS_SPEC {
   void add(oop p, size_t oop_size) {
     uint age = p->age();
     assert(age > 0 && age < table_size, "invalid age of object");
-    sizes[age] += oop_size;
+    sizes[age] += oop_size;// 同一年龄的对象大小
   }
 
   // Merge another age table with the current one.  Used

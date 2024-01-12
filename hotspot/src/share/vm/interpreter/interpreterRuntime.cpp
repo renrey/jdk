@@ -948,9 +948,7 @@ IRT_ENTRY(void, InterpreterRuntime::at_safepoint(JavaThread* thread))
   // if this is called during a safepoint
 
   if (JvmtiExport::should_post_single_step()) {
-    // We are called during regular safepoints and when the VM is
-    // single stepping. If any thread is marked for single stepping,
-    // then we may have JVMTI work to do.
+c
     JvmtiExport::at_single_stepping_point(thread, method(thread), bcp(thread));
   }
 IRT_END

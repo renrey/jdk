@@ -72,17 +72,26 @@ static void pd_conjoint_words(HeapWord* from, HeapWord* to, size_t count) {
 
 static void pd_disjoint_words(HeapWord* from, HeapWord* to, size_t count) {
 #ifdef AMD64
+  
+  // count（多少个HeapWord，1个word = 64位二进制,1个heapword实际也是占8b=64） 
+  // word实际代表当前处理器一次可处理的数字
+  // 在8个以内： 看着就是把from地址一个一个word更新到to地址开始的地方
+  // 这里虽然是指针参数，但跟数组一样以[n]来表示后面第n个word，因为数组也是可以以指针参数形式传入，然后这样以下标方式访问）
+  // 等于假设了from开始连续8个都是heapword类型（大小就是heapword大小），不用像下面memcpy还需算具体大小
   switch (count) {
-  case 8:  to[7] = from[7];
+  case 8:  to[7] = from[7]; // 第8个word复制
   case 7:  to[6] = from[6];
   case 6:  to[5] = from[5];
   case 5:  to[4] = from[4];
   case 4:  to[3] = from[3];
   case 3:  to[2] = from[2];
-  case 2:  to[1] = from[1];
-  case 1:  to[0] = from[0];
+  case 2:  to[1] = from[1]; // 第2个word复制
+  case 1:  to[0] = from[0]; // 第1个word复制
   case 0:  break;
+  // 即9以上
   default:
+  // 直接利用memcpy来拷贝（意思是把from地址开始的count * HeapWordSize的字节数数据拷贝到to地址开始的区域，拷贝单位是以b来看的）
+  // 超过8个（word多），拷贝的字节数=count（多少个HeapWord） * HeapWordSize（1个HeapWord占8b，word实际代表当前处理器一次可处理的数字-》64）
     (void)memcpy(to, from, count * HeapWordSize);
     break;
   }

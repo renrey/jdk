@@ -70,14 +70,19 @@ inline bool markOopDesc::must_be_preserved_with_bias_for_promotion_failure(oop o
       prototype_for_object(obj_containing_mark)->has_bias_pattern()) {
     return true;
   }
+  // 未被锁（01）or markword里没有hashcode
   return (!is_unlocked() || !has_no_hash());
 }
 
 // Should this header be preserved in the case of a promotion failure
 // during scavenge?
 inline bool markOopDesc::must_be_preserved_for_promotion_failure(oop obj_containing_mark) const {
+  // 未开启偏向锁
   if (!UseBiasedLocking)
+    // 未被锁（01）or markword里没有hashcode
     return (!is_unlocked() || !has_no_hash());
+  // 开启偏向锁判断
+  // 就是偏向锁相关判断
   return must_be_preserved_with_bias_for_promotion_failure(obj_containing_mark);
 }
 

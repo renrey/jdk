@@ -69,6 +69,7 @@ inline markOop oopDesc::cas_set_mark(markOop new_mark, markOop old_mark) {
 }
 
 inline Klass* oopDesc::klass() const {
+  // 压缩指针
   if (UseCompressedClassPointers) {
     return Klass::decode_klass_not_null(_metadata._compressed_klass);
   } else {
@@ -206,8 +207,9 @@ inline narrowOop oopDesc::encode_heap_oop(oop v) {
 
 inline oop oopDesc::decode_heap_oop_not_null(narrowOop v) {
   assert(!is_null(v), "narrow oop value can never be zero");
-  address base = Universe::narrow_oop_base();
-  int    shift = Universe::narrow_oop_shift();
+  address base = Universe::narrow_oop_base(); // 基址
+  int    shift = Universe::narrow_oop_shift(); // 偏移量,一段多大
+  // 实际地址：base+ 
   oop result = (oop)(void*)((uintptr_t)base + ((uintptr_t)v << shift));
   assert(check_obj_alignment(result), err_msg("address not aligned: " PTR_FORMAT, (void*) result));
   return result;
@@ -222,6 +224,7 @@ inline oop oopDesc::decode_heap_oop(oop v)  { return v; }
 
 // Load an oop out of the Java heap as is without decoding.
 // Called by GC to check for null before decoding.
+// 从java heap加载1个oop，原始未解析的
 inline oop       oopDesc::load_heap_oop(oop* p)          { return *p; }
 inline narrowOop oopDesc::load_heap_oop(narrowOop* p)    { return *p; }
 
@@ -487,6 +490,9 @@ inline int oopDesc::size_given_klass(Klass* klass)  {
 
 
 inline int oopDesc::size()  {
+  // 1个对象的占用大小取决于class？
+
+  // 传入class对象
   return size_given_klass(klass());
 }
 
@@ -671,6 +677,8 @@ inline void oopDesc::incr_age() {
   if (has_displaced_mark()) {
     set_displaced_mark(displaced_mark()->incr_age());
   } else {
+    // 更新markword
+    // 实际返回是指针地址，这个地址（值）其实就是64位markword内容
     set_mark(mark()->incr_age());
   }
 }
@@ -707,7 +715,7 @@ inline int oopDesc::oop_iterate(OopClosureType* blk, MemRegion mr) {       \
   SpecializationStats::record_call();                                      \
   return klass()->oop_oop_iterate##nv_suffix##_m(this, blk, mr);       \
 }
-
+// Klass
 
 inline int oopDesc::oop_iterate_no_header(OopClosure* blk) {
   // The NoHeaderExtendedOopClosure wraps the OopClosure and proxies all

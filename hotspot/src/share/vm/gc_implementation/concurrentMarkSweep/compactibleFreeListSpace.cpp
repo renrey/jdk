@@ -1300,9 +1300,11 @@ size_t CompactibleFreeListSpace::expansionSpaceRequired(size_t obj_size) const {
   // bigLAB or a smallLAB plus refilling a PromotionInfo object.  MinChunkSize
   // is added because the dictionary may over-allocate to avoid fragmentation.
   size_t space = obj_size;
+  // 默认_adaptive_freelists=true，即这里等于false
   if (!_adaptive_freelists) {
     space = MAX2(space, _smallLinearAllocBlock._refillSize);
   }
+  // 
   space += _promoInfo.refillSize() + 2 * MinChunkSize;
   return space;
 }

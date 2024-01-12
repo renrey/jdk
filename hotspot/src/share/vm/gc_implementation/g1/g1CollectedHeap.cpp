@@ -2584,6 +2584,7 @@ void G1CollectedHeap::collect(GCCause::Cause cause) {
         VMThread::execute(&op);
       } else {
         // Schedule a Full GC.
+        // 提交1个g1的Fullgc
         VM_G1CollectFull op(gc_count_before, old_marking_count_before, cause);
         VMThread::execute(&op);
       }

@@ -81,14 +81,22 @@ inline void OopsInKlassOrGenClosure::do_klass_barrier() {
 // NOTE! Any changes made here should also be made
 // in FastScanClosure::do_oop_work()
 template <class T> inline void ScanClosure::do_oop_work(T* p) {
-  T heap_oop = oopDesc::load_heap_oop(p);
+  // p应该就是引用使用的指针
+  T heap_oop = oopDesc::load_heap_oop(p);// java堆中原始oop（可能是压缩指针narrowOop）
   // Should we copy the obj?
+
+  // *p 所引用的那个对象不是NULL，才能进行copy（就等于p引用对象存活需要被copy移动）
   if (!oopDesc::is_null(heap_oop)) {
+    // 把p引用的解析成正式使用的oop，其实是压缩指针才需要解析成
+    // 需要解析的是narrowOop，（oop时不需要）oopDesc::decode_heap_oop_not_null(narrowOop v)
     oop obj = oopDesc::decode_heap_oop_not_null(heap_oop);
+
+    // _boundary 代表老年代的空间开始地址
+    // 只有年轻代对象才会处理
     if ((HeapWord*)obj < _boundary) {
       assert(!_g->to()->is_in_reserved(obj), "Scanning field twice?");
       oop new_obj = obj->is_forwarded() ? obj->forwardee()
-                                        : _g->copy_to_survivor_space(obj);
+                                        : _g->copy_to_survivor_space(obj);//调用复制
       oopDesc::encode_store_heap_oop_not_null(p, new_obj);
     }
 

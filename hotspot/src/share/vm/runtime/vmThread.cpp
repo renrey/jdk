@@ -418,10 +418,11 @@ void VMThread::loop() {
     //
     // use no_safepoint_check to get lock without attempting to "sneak"
     { MutexLockerEx mu_queue(VMOperationQueue_lock,
-                             Mutex::_no_safepoint_check_flag);
+                             Mutex::_no_safepoint_check_flag);// 队列取出先加锁获取资源
 
       // Look for new operation
       assert(_cur_vm_operation == NULL, "no current one should be executing");
+      // 队列取出下一个操作
       _cur_vm_operation = _vm_queue->remove_next();
 
       // Stall time tracking code
@@ -473,7 +474,7 @@ void VMThread::loop() {
     } // Release mu_queue_lock
 
     //
-    // Execute VM operation
+    // Execute VM operation 执行vm操作
     //
     { HandleMark hm(VMThread::vm_thread());
 
@@ -489,11 +490,12 @@ void VMThread::loop() {
 
       // If we are at a safepoint we will evaluate all the operations that
       // follow that also require a safepoint
+      // 如果需要在safepoint时执行
       if (_cur_vm_operation->evaluate_at_safepoint()) {
 
         _vm_queue->set_drain_list(safepoint_ops); // ensure ops can be scanned
 
-        SafepointSynchronize::begin();
+        SafepointSynchronize::begin();// 触发safepoint
         evaluate_operation(_cur_vm_operation);
         // now process all queued safepoint ops, iteratively draining
         // the queue until there are none left

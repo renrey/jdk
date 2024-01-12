@@ -32,6 +32,8 @@
 // This hierarchy is a representation hierarchy, i.e. if A is a superclass
 // of B, A's representation is a prefix of B's representation.
 
+// 32位int，
+// 使用偏移量而不是地址来表示 Java 对象内部的 oop（普通对象指针）。
 typedef juint narrowOop; // Offset instead of address for an oop within a java object
 
 // If compressed klass pointers then use narrowKlass.
@@ -72,7 +74,7 @@ typedef class     typeArrayOopDesc*            typeArrayOop;
 class Thread;
 class PromotedObject;
 
-
+// 大概就是封装底层指针oopDesc
 class oop {
   oopDesc* _o;
 

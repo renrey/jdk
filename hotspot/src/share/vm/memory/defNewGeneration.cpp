@@ -177,7 +177,7 @@ KlassScanClosure::KlassScanClosure(OopsInKlassOrGenClosure* scavenge_closure,
     : _scavenge_closure(scavenge_closure),
       _accumulate_modified_oops(klass_rem_set->accumulate_modified_oops()) {}
 
-
+// 构建函数
 DefNewGeneration::DefNewGeneration(ReservedSpace rs,
                                    size_t initial_size,
                                    int level,
@@ -190,11 +190,14 @@ DefNewGeneration::DefNewGeneration(ReservedSpace rs,
                 (HeapWord*)_virtual_space.high());
   Universe::heap()->barrier_set()->resize_covered_region(cmr);
 
+  // eden
   if (GenCollectedHeap::heap()->collector_policy()->has_soft_ended_eden()) {
     _eden_space = new ConcEdenSpace(this);
   } else {
     _eden_space = new EdenSpace(this);
   }
+
+  // from、to suvivor
   _from_space = new ContiguousSpace();
   _to_space   = new ContiguousSpace();
 
@@ -225,6 +228,7 @@ DefNewGeneration::DefNewGeneration(ReservedSpace rs,
   compute_space_boundaries(0, SpaceDecorator::Clear, SpaceDecorator::Mangle);
   update_counters();
   _next_gen = NULL;
+  // 最大年龄
   _tenuring_threshold = MaxTenuringThreshold;
   _pretenure_size_threshold_words = PretenureSizeThreshold >> LogHeapWordSize;
 
@@ -594,7 +598,7 @@ void DefNewGeneration::collect(bool   full,
   IsAliveClosure is_alive(this);
   ScanWeakRefClosure scan_weak_ref(this);
 
-  age_table()->clear();
+  age_table()->clear();// 清理年龄表
   to()->clear(SpaceDecorator::Mangle);
 
   gch->rem_set()->prepare_for_younger_refs_iterate(false);
@@ -611,6 +615,7 @@ void DefNewGeneration::collect(bool   full,
   KlassScanClosure klass_scan_closure(&fsc_with_no_gc_barrier,
                                       gch->rem_set()->klass_rem_set());
 
+  // 晋升失败对象的处理                                    
   set_promo_failure_scan_stack_closure(&fsc_with_no_gc_barrier);
   FastEvacuateFollowersClosure evacuate_followers(gch, _level, this,
                                                   &fsc_with_no_gc_barrier,
@@ -621,6 +626,7 @@ void DefNewGeneration::collect(bool   full,
 
   int so = SharedHeap::SO_AllClasses | SharedHeap::SO_Strings | SharedHeap::SO_CodeCache;
 
+  // 扫描指定代（老年代）
   gch->gen_process_strong_roots(_level,
                                 true,  // Process younger gens, if any,
                                        // as strong roots.
@@ -727,6 +733,7 @@ void DefNewGeneration::init_assuming_no_promotion_failure() {
   from()->set_next_compaction_space(NULL);
 }
 
+// 移除前向指针？
 void DefNewGeneration::remove_forwarding_pointers() {
   RemoveForwardPointerClosure rspc;
   eden()->object_iterate(&rspc);
@@ -736,8 +743,10 @@ void DefNewGeneration::remove_forwarding_pointers() {
   assert(_objs_with_preserved_marks.size() == _preserved_marks_of_objs.size(),
          "should be the same");
   while (!_objs_with_preserved_marks.is_empty()) {
+    // 同时出栈
     oop obj   = _objs_with_preserved_marks.pop();
     markOop m = _preserved_marks_of_objs.pop();
+    // 让对象关连回原来的markOop
     obj->set_mark(m);
   }
   _objs_with_preserved_marks.clear(true);
@@ -747,37 +756,54 @@ void DefNewGeneration::remove_forwarding_pointers() {
 void DefNewGeneration::preserve_mark(oop obj, markOop m) {
   assert(_promotion_failed && m->must_be_preserved_for_promotion_failure(obj),
          "Oversaving!");
-  _objs_with_preserved_marks.push(obj);
-  _preserved_marks_of_objs.push(m);
+  // 就是用2个栈同时入栈这个对象、markword
+  _objs_with_preserved_marks.push(obj);// 对象加入栈
+  _preserved_marks_of_objs.push(m);// markjword加入栈
 }
 
 void DefNewGeneration::preserve_mark_if_necessary(oop obj, markOop m) {
+  // 貌似是对象没有被上锁独占
   if (m->must_be_preserved_for_promotion_failure(obj)) {
     preserve_mark(obj, m);
   }
 }
 
+// 处理晋升失败
 void DefNewGeneration::handle_promotion_failure(oop old) {
   if (PrintPromotionFailure && !_promotion_failed) {
     gclog_or_tty->print(" (promotion failure size = " SIZE_FORMAT ") ",
                         old->size());
   }
-  _promotion_failed = true;
-  _promotion_failed_info.register_copy_failure(old->size());
+  _promotion_failed = true;// 标记_promotion_failed，等于本次gc有出现晋升失败
+  _promotion_failed_info.register_copy_failure(old->size()); // 登记copy失败信息（晋升也是copy失败），用于后面预估分析
+  // 必要时 对象保留原来的对象makrword（就是markword-》markOOp）
+  // mark()-> 应该还是markword
   preserve_mark_if_necessary(old, old->mark());
+
   // forward to self
+  // 主要是scavenge用到
+  // 对对象自己执行向前指针Forward pointer（scavenge），用于gc后对象被移动仍然能访问到
   old->forward_to(old);
 
+  // 把对象放入_promo_failure_scan_stack栈
   _promo_failure_scan_stack.push(old);
 
+
+  // 这里等于多线程执行gc时候，其中一个线程负责处理晋升的对象，其他线程继续其他操作
+  // 放入后，尝试进行promo_failure_drain
   if (!_promo_failure_drain_in_progress) {
     // prevent recursion in copy_to_survivor_space()
     _promo_failure_drain_in_progress = true;
+    // 进入执行promo_failure_drain，处理晋升失败对象
+    // 就是把_promo_failure_scan_stack里对象（晋升失败）出栈扫描指针
     drain_promo_failure_scan_stack();
     _promo_failure_drain_in_progress = false;
   }
 }
-
+// copy到另一个suvivor
+// 调用地方:
+// ScanClosure::do_oop_work
+// FastScanClosure::do_oop_work
 oop DefNewGeneration::copy_to_survivor_space(oop old) {
   assert(is_in_reserved(old) && !old->is_forwarded(),
          "shouldn't be scavenging this oop");
@@ -785,39 +811,55 @@ oop DefNewGeneration::copy_to_survivor_space(oop old) {
   oop obj = NULL;
 
   // Try allocating obj in to-space (unless too old)
+  // 分配到另一个suvivor
+  // 年龄判断的地方！！！
   if (old->age() < tenuring_threshold()) {
+    // 分配这个对象在新地方（suvivor）的内存空间
     obj = (oop) to()->allocate(s);
   }
 
   // Otherwise try allocating obj tenured
+  // 可能年龄过了or分配失败（申请分配内存空间失败），尝试晋升
   if (obj == NULL) {
+    // 进行晋升
     obj = _next_gen->promote(old, s);
+    // 晋升失败
     if (obj == NULL) {
       handle_promotion_failure(old);
       return old;
     }
+    // 到这里等于，就是晋升到老年代的空间
+  // 无须晋升  
   } else {
     // Prefetch beyond obj
+    // Prefetch指令预先读取到缓存
     const intx interval = PrefetchCopyIntervalInBytes;
     Prefetch::write(obj, interval);
 
     // Copy obj
+    // 拷贝到新地址
     Copy::aligned_disjoint_words((HeapWord*)old, (HeapWord*)obj, s);
 
     // Increment age if obj still in new generation
-    obj->incr_age();
-    age_table()->add(obj, s);
+    obj->incr_age(); // 年龄+1!!!（就是更新markword）
+    age_table()->add(obj, s); // agetable放入当前对象、其大小， 里面主要统计同一年龄的对象大小
+
+    // 总结:1. 先copy到新区域 2. markword年龄+1 3. 同代存活对象占用空间叠加
   }
 
   // Done, insert forward pointer to obj in this header
+  // 往插入前向指针
   old->forward_to(obj);
 
   return obj;
 }
 
 void DefNewGeneration::drain_promo_failure_scan_stack() {
+  // 就是出栈里对象
   while (!_promo_failure_scan_stack.is_empty()) {
      oop obj = _promo_failure_scan_stack.pop();
+     // 遍历当前对象的所有指向对象，执行_promo_failure_scan_stack_closure
+     //  FastScanClosure fsc_with_no_gc_barrier
      obj->oop_iterate(_promo_failure_scan_stack_closure);
   }
 }
