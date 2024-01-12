@@ -63,6 +63,7 @@ SharedHeap::SharedHeap(CollectorPolicy* policy_) :
   if (_process_strong_tasks == NULL || !_process_strong_tasks->valid()) {
     vm_exit_during_initialization("Failed necessary allocation.");
   }
+  // 构造就会更新-》所以这只会创建1次？
   _sh = this;  // ch is static, should be set only once.
   if ((UseParNewGC ||
       (UseConcMarkSweepGC && (CMSParallelInitialMarkEnabled ||

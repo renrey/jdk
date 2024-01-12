@@ -1352,10 +1352,13 @@ void set_object_alignment() {
   assert(MinObjAlignmentInBytes == MinObjAlignment * HeapWordSize, "ObjectAlignmentInBytes value is incorrect");
   MinObjAlignmentInBytesMask = MinObjAlignmentInBytes - 1;
 
+  // ObjectAlignmentInBytes 默认就是8 （8b），这里得到LogMinObjAlignmentInBytes=3 （以2的n次方得到8）
   LogMinObjAlignmentInBytes  = exact_log2(ObjectAlignmentInBytes);
   LogMinObjAlignment         = LogMinObjAlignmentInBytes - LogHeapWordSize;
 
   // Oop encoding heap max
+  // 可压缩的最大地址，(uint64_t(max_juint) + 1) 就是原始32位最大的，即4g
+  // 根据LogMinObjAlignmentInBytes（3，实际是代表2的3次方）左移，实际等于4g*ObjectAlignmentInBytes（8）
   OopEncodingHeapMax = (uint64_t(max_juint) + 1) << LogMinObjAlignmentInBytes;
 
 #if INCLUDE_ALL_GCS

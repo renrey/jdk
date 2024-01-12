@@ -623,11 +623,13 @@ gen_process_strong_roots(int level,
     if (!_gen_process_strong_tasks->is_task_claimed(GCH_PS_younger_gens)) {
       for (int i = 0; i < level; i++) {
           // OopsInGenClosure::set_generation(Generation* gen))
+        // 每次更新闭包的当前代信息，应该执行时里需要回查使用代对象
         not_older_gens->set_generation(_gens[i]);// 把具体的gen对象设置到not
 
         // Generation::oop_iterate(ExtendedOopClosure* cl)
-        _gens[i]->oop_iterate(not_older_gens); // 遍历指针
+        _gens[i]->oop_iterate(not_older_gens); // 遍历代的对象执行not_older_gens的闭包函数
       }
+      // 重置函数中_gen（后面闭包会被复用吧）
       not_older_gens->reset_generation();
     }
   }
@@ -863,6 +865,7 @@ bool GenCollectedHeap::is_in_partial_collection(const void* p) {
 
 void GenCollectedHeap::oop_iterate(ExtendedOopClosure* cl) {
   for (int i = 0; i < _n_gens; i++) {
+    // Generation::oop_iterate(ExtendedOopClosure* cl)
     _gens[i]->oop_iterate(cl);
   }
 }

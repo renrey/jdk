@@ -42,6 +42,8 @@ class CardTableRS: public GenRemSet {
   friend class ClearNoncleanCardWrapper;
 
   static jbyte clean_card_val() {
+    // -1
+    // 二进制11111110
     return CardTableModRefBS::clean_card;
   }
 
@@ -62,14 +64,14 @@ class CardTableRS: public GenRemSet {
 
   // 代表现成结构的CardTableModRefBS做扩展
   enum ExtendedCardValue {
-    youngergen_card   = CardTableModRefBS::CT_MR_BS_last_reserved + 1, // 16+1
+    youngergen_card   = CardTableModRefBS::CT_MR_BS_last_reserved + 1, // 16+1:10001
     // These are for parallel collection.
     // There are three P (parallel) youngergen card values.  In general, this
     // needs to be more than the number of generations (including the perm
     // gen) that might have younger_refs_do invoked on them separately.  So
     // if we add more gens, we have to add more values.
     // 下面的代表并行使用的
-    youngergenP1_card  = CardTableModRefBS::CT_MR_BS_last_reserved + 2,
+    youngergenP1_card  = CardTableModRefBS::CT_MR_BS_last_reserved + 2,// 18:10010
     youngergenP2_card  = CardTableModRefBS::CT_MR_BS_last_reserved + 3,
     youngergenP3_card  = CardTableModRefBS::CT_MR_BS_last_reserved + 4,
     cur_youngergen_and_prev_nonclean_card =
@@ -81,6 +83,12 @@ class CardTableRS: public GenRemSet {
   // portion of the table.  (The perm gen is index 0; other gens are at
   // their level plus 1.  They youngest gen is in the table, but will
   // always have the value "clean_card".)
+  //  一个数组，该数组对于每一代（generation）都包含一个卡表（card table）的值，
+  // 该值是在该表的某个部分上最后用作 younger_refs_do 迭代的当前值。
+  // 其中，perm gen（永久代）的索引是 0；其他代的索引是它们的级别加 1。最年轻的代在表中，但始终具有值 "clean_card"。
+  
+  // 所以这个指针指的是 字节数组，每个元素byte代表一个代
+  // 代表younger_refs_do，当前遍历到，所使用的cardtable值
   jbyte* _last_cur_val_in_gen;
 
   jbyte _cur_youngergen_card_val;
@@ -124,8 +132,17 @@ public:
   // 在执行前，card card的每个项会被clear；如果在OopsInGenClosure操作后oop仍然老->年轻，blk用于变脏操作
   void younger_refs_iterate(Generation* g, OopsInGenClosure* blk);
 
+  // 更新cardtable！！！
   void inline_write_ref_field_gc(void* field, oop new_val) {
+    // jbyte就是char（1个字节8位），假设8个1，就是255
+    // 这里是从代表连续区域的card table（字节数组中）拿到，自己当前所在位置归属的cardtable(1byte)数组项
+    // 数组每一项代表每个512b内存空间的cardtable值
+    
+    // 1. 先拿到对应对象所处的cardtable项（byte）的指针
     jbyte* byte = _ct_bs->byte_for(field);
+    
+    // 2. 把指针的对象（btye）更新成youngergen_card（17，二进制10001）
+    // 等于变脏？
     *byte = youngergen_card;
   }
   void write_ref_field_gc_work(void* field, oop new_val) {

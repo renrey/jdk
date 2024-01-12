@@ -40,7 +40,7 @@ class KlassClosure;
 class ClassLoaderData;
 
 // Closure provides abortability.
-
+// 提供了可终止方法
 class Closure : public StackObj {
  protected:
   bool _abort;
@@ -54,8 +54,7 @@ class Closure : public StackObj {
 };
 
 // OopClosure is used for iterating through references to Java objects.
-// 用于遍历java对象的引用
-
+// 用于遍历对java对象的引用（就是oop指针）
 class OopClosure : public Closure {
  public:
   virtual void do_oop(oop* o) = 0;
@@ -67,6 +66,8 @@ class OopClosure : public Closure {
 // ExtendedOopClosure adds extra code to be run during oop iterations.
 // This is needed by the GC and is extracted to a separate type to not
 // pollute the OopClosure interface.
+// 添加一些额外的代码当遍历oop时
+// 这个是被gc需要，且被抽取到1个分离独立的type，不会创建OopClosure接口的
 class ExtendedOopClosure : public OopClosure {
  public:
   ReferenceProcessor* _ref_processor;

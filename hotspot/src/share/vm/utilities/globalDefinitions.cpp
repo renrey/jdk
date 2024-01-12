@@ -44,7 +44,8 @@ int MinObjAlignmentInBytes     = -1;
 int MinObjAlignmentInBytesMask = 0;
 
 int LogMinObjAlignment         = -1;
-int LogMinObjAlignmentInBytes  = -1;
+// ObjectAlignmentInBytes 默认就是8 （8b），这里得到LogMinObjAlignmentInBytes=3 （以2的n次方得到8）
+int LogMinObjAlignmentInBytes  = -1; // 默认3，地址通过用这个3来左移达到*8的效果
 
 // Oop encoding heap max
 uint64_t OopEncodingHeapMax = 0;

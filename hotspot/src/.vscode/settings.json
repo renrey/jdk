@@ -1,0 +1,12 @@
+{
+      "files.associations": {
+            "cstddef": "cpp",
+            "xlocmon": "cpp",
+            "xlocale": "cpp",
+            "xmemory": "cpp",
+            "iterator": "cpp",
+            "memory": "cpp",
+            "xutility": "cpp",
+            "xiosbase": "cpp"
+      }
+}

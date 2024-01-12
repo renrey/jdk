@@ -208,8 +208,8 @@ inline narrowOop oopDesc::encode_heap_oop(oop v) {
 inline oop oopDesc::decode_heap_oop_not_null(narrowOop v) {
   assert(!is_null(v), "narrow oop value can never be zero");
   address base = Universe::narrow_oop_base(); // 基址
-  int    shift = Universe::narrow_oop_shift(); // 偏移量,一段多大
-  // 实际地址：base+ 
+  int    shift = Universe::narrow_oop_shift(); // 偏移量大小,一段多大
+  // 实际地址：base+ 地址*8（解码后的偏移量）
   oop result = (oop)(void*)((uintptr_t)base + ((uintptr_t)v << shift));
   assert(check_obj_alignment(result), err_msg("address not aligned: " PTR_FORMAT, (void*) result));
   return result;
@@ -246,6 +246,7 @@ inline void oopDesc::store_heap_oop(narrowOop* p, narrowOop v)     { *p = v; }
 
 // Encode and store a heap oop.
 inline void oopDesc::encode_store_heap_oop_not_null(narrowOop* p, oop v) {
+  // 更新指针指向的地址
   *p = encode_heap_oop_not_null(v);
 }
 inline void oopDesc::encode_store_heap_oop_not_null(oop* p, oop v) { *p = v; }
@@ -705,7 +706,7 @@ inline int oopDesc::adjust_pointers() {
 }
 
 #define OOP_ITERATE_DEFN(OopClosureType, nv_suffix)                        \
-                                                                           \
+/** 实际就是执行klass的迭代*/                                                     \
 inline int oopDesc::oop_iterate(OopClosureType* blk) {                     \
   SpecializationStats::record_call();                                      \
   return klass()->oop_oop_iterate##nv_suffix(this, blk);               \
@@ -713,6 +714,9 @@ inline int oopDesc::oop_iterate(OopClosureType* blk) {                     \
                                                                            \
 inline int oopDesc::oop_iterate(OopClosureType* blk, MemRegion mr) {       \
   SpecializationStats::record_call();                                      \
+  // 具体还是执行klass的
+  // oop_oop_iterate##nv_suffix##_m这个都是子类Klass实现的
+  // // 例如InstanceKlass::oop_oop_iterate##nv_suffix##_m
   return klass()->oop_oop_iterate##nv_suffix##_m(this, blk, mr);       \
 }
 // Klass

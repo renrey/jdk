@@ -102,6 +102,7 @@ CardTableModRefBS::CardTableModRefBS(MemRegion whole_heap,
   // then add it to byte_map_base, i.e.
   //
   //   _byte_map = byte_map_base + (uintptr_t(low_bound) >> card_shift)
+  // 代表这个申请的空间开头就用来_byte_map这个字节数组
   _byte_map = (jbyte*) heap_rs.base();
   byte_map_base = _byte_map - (uintptr_t(low_bound) >> card_shift);
   assert(byte_for(low_bound) == &_byte_map[0], "Checking start of map");

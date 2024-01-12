@@ -44,24 +44,32 @@ CardTableRS::CardTableRS(MemRegion whole_heap,
   _regions_to_iterate(max_covered_regions - 1)
 {
 #if INCLUDE_ALL_GCS
+  // g1
   if (UseG1GC) {
+      // g1使用G1SATBCardTableLoggingModRefBS
+      // 看名字就知道把satb也放在cardtable中实现
       _ct_bs = new G1SATBCardTableLoggingModRefBS(whole_heap,
                                                   max_covered_regions);
   } else {
+    // 非g1，CardTableModRefBSForCTRS
     _ct_bs = new CardTableModRefBSForCTRS(whole_heap, max_covered_regions);
   }
 #else
   _ct_bs = new CardTableModRefBSForCTRS(whole_heap, max_covered_regions);
 #endif
-  set_bs(_ct_bs);
+  set_bs(_ct_bs);// 等于更新使用的barrierset
+  // 申请字节数组（大小就是 代数+1，即堆的所有代+永久代（第一个））
   _last_cur_val_in_gen = NEW_C_HEAP_ARRAY3(jbyte, GenCollectedHeap::max_gens + 1,
                          mtGC, 0, AllocFailStrategy::RETURN_NULL);
   if (_last_cur_val_in_gen == NULL) {
     vm_exit_during_initialization("Could not create last_cur_val_in_gen array.");
   }
+  // 全部初始都是clean
   for (int i = 0; i < GenCollectedHeap::max_gens + 1; i++) {
     _last_cur_val_in_gen[i] = clean_card_val();
   }
+
+  // _ct_bs 指回当前对象
   _ct_bs->set_CTRS(this);
 }
 

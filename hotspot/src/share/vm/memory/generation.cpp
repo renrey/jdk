@@ -298,6 +298,7 @@ class GenerationOopIterateClosure : public SpaceClosure {
  public:
   ExtendedOopClosure* cl;
   MemRegion mr; //一般用于card marking的内存
+  // 就是利用space来遍历执行cl
   virtual void do_space(Space* s) {
     // 年轻代： Space-》ContiguousSpace，ContiguousSpace::oop_iterate(MemRegion mr, ExtendedOopClosure* blk)
     s->oop_iterate(mr, cl);
@@ -307,12 +308,17 @@ class GenerationOopIterateClosure : public SpaceClosure {
 };
 
 void Generation::oop_iterate(ExtendedOopClosure* cl) {
+  // 封装了1个新的闭包
     // _reserved就是预留用于card marking的内存地址
   GenerationOopIterateClosure blk(cl, _reserved);
 
-  // 就是开始扫描对
-  // 年轻代的(par也是用def)：DefNewGeneration::space_iterate(SpaceClosure* blk,
-  space_iterate(&blk);
+  // 就是对space遍历执行闭包
+  // 这个space遍历方法是虚函数，需要看子类实现
+  // 但里面就是执行封装后闭包的do_space，从而还是对对应子类的space进行遍历对象，执行cl闭包
+
+  // 年轻代的(par也是用def)：DefNewGeneration::space_iterate(SpaceClosure* blk) 
+  //    => EdenSpace(继承ContiguousSpace)、ContiguousSpace 2种的oop_iterate
+  space_iterate(&blk);// 
 }
 
 void Generation::oop_iterate(MemRegion mr, ExtendedOopClosure* cl) {

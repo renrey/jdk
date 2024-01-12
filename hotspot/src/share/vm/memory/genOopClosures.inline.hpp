@@ -39,15 +39,22 @@ inline OopsInGenClosure::OopsInGenClosure(Generation* gen) :
   set_generation(gen);
 }
 
+// 就是设置当前代信息到闭包
 inline void OopsInGenClosure::set_generation(Generation* gen) {
-  _gen = gen;
-  _gen_boundary = _gen->reserved().start(); // 拿到对应代的用于card marking的的内存地址开始
-  // Barrier set for the heap, must be set after heap is initialized
-  // 没有则获取
+  _gen = gen;// 更新当前处理的代
+   // 拿到对应代的用于card marking的的内存地址开始
+  _gen_boundary = _gen->reserved().start();
+
+  // Barrier set for the heap, must be set after heap is initialized（为堆准备的barrier set，一定在堆初始化后set）
+  // 没有设置rs（卡表）则获取
   if (_rs == NULL) {
+    // 理论上SharedHeap::heap()就是通过static拿回当前使用的heap对象（只会一个）
+    // 然后拿回rs（_rem_set 记忆集）
+    // 分代GenCollectedHeap：CardTableRS
+    // g1 -》 G1CollectedHeap:CardTableRS
     GenRemSet* rs = SharedHeap::heap()->rem_set();
     assert(rs->rs_kind() == GenRemSet::CardTable, "Wrong rem set kind");
-    _rs = (CardTableRS*)rs;
+    _rs = (CardTableRS*)rs;// 更新引用
   }
 }
 
@@ -55,9 +62,13 @@ template <class T> inline void OopsInGenClosure::do_barrier(T* p) {
   assert(generation()->is_in_reserved(p), "expected ref in generation");
   T heap_oop = oopDesc::load_heap_oop(p);
   assert(!oopDesc::is_null(heap_oop), "expected non-null oop");
-  oop obj = oopDesc::decode_heap_oop_not_null(heap_oop);
+  oop obj = oopDesc::decode_heap_oop_not_null(heap_oop);// 解码后的真实地址
+
+  // 指向年轻代（指针< _gen_boundary），标记card
   // If p points to a younger generation, mark the card.
   if ((HeapWord*)obj < _gen_boundary) {
+    // 更新rs（记忆集合，结构是cardtable），其实就是更新p所在ct标记
+    // CardTableRS
     _rs->inline_write_ref_field_gc(p, obj);
   }
 }
@@ -81,7 +92,7 @@ inline void OopsInKlassOrGenClosure::do_klass_barrier() {
 // NOTE! Any changes made here should also be made
 // in FastScanClosure::do_oop_work()
 template <class T> inline void ScanClosure::do_oop_work(T* p) {
-  // p应该就是引用使用的指针
+  // p应该就是引用使用的指针（可能是句柄handle，一个对外间接引用）
   T heap_oop = oopDesc::load_heap_oop(p);// java堆中原始oop（可能是压缩指针narrowOop）
   // Should we copy the obj?
 
@@ -95,10 +106,16 @@ template <class T> inline void ScanClosure::do_oop_work(T* p) {
     // 只有年轻代对象才会处理
     if ((HeapWord*)obj < _boundary) {
       assert(!_g->to()->is_in_reserved(obj), "Scanning field twice?");
+      // 执行copy，得到对象的移动后新内存地址
       oop new_obj = obj->is_forwarded() ? obj->forwardee()
                                         : _g->copy_to_survivor_space(obj);//调用复制
+      // 保存copy后新地址到p（应该就是句柄） 
+      // 就是p更新指针指向的地址                                 
       oopDesc::encode_store_heap_oop_not_null(p, new_obj);
     }
+
+    // OopsInGenClosure要求执行barrier，为了更新引用后是老年代指向年轻代
+    // 其实就是晋升到老年代后，更新指向年轻代的脏卡，barrier就是这个操作需要写屏障
 
     if (is_scanning_a_klass()) {
       do_klass_barrier();

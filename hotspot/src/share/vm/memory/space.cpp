@@ -681,8 +681,11 @@ void ContiguousSpace::oop_iterate(ExtendedOopClosure* blk) {
   HeapWord* obj_addr = bottom();//最低
   HeapWord* t = top();
   // Could call objects iterate, but this is easier.
-  // 遍历对象
+  // 从低到高遍历对象
   while (obj_addr < t) {
+    // oopDesc::oop_iterate(OopClosureType* blk, MemRegion mr)
+    // 里面又是调用oop的klass 的方法 InstanceKlass::oop_oop_iterate##nv_suffix##_m
+    // 普通对象的Klass是InstanceKlass
     obj_addr += oop(obj_addr)->oop_iterate(blk);
   }
 }
@@ -700,7 +703,7 @@ void ContiguousSpace::oop_iterate(MemRegion mr, ExtendedOopClosure* blk) {
     return;
   }
   if (mr.equals(cur)) {
-    oop_iterate(blk);
+    oop_iterate(blk);// 遍历执行blk
     return;
   }
   assert(mr.end() <= top(), "just took an intersection above");
@@ -708,7 +711,7 @@ void ContiguousSpace::oop_iterate(MemRegion mr, ExtendedOopClosure* blk) {
   HeapWord* t = mr.end();
 
   // Handle first object specially.
-  oop obj = oop(obj_addr);
+  oop obj = oop(obj_addr); // 第1个对象
   SpaceMemRegionOopsIterClosure smr_blk(blk, mr);
   obj_addr += obj->oop_iterate(&smr_blk);
   while (obj_addr < t) {

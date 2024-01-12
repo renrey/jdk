@@ -101,7 +101,7 @@ class KlassClosure;
 //  value may be used in later phases and in one instance at least
 //  (the parallel remark) it has to be used (the parallel remark depends
 //  on the partitioning done in the previous parallel scavenge).
-
+// 就是heap需要实现通用抽象class
 class SharedHeap : public CollectedHeap {
   friend class VMStructs;
 
@@ -116,6 +116,7 @@ protected:
   // There should be only a single instance of "SharedHeap" in a program.
   // This is enforced with the protected constructor below, which will also
   // set the static pointer "_sh" to that instance.
+  // 这个是static，即共享的
   static SharedHeap* _sh;
 
   // and the Gen Remembered Set, at least one good enough to scan the perm

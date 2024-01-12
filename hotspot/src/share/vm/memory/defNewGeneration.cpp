@@ -191,9 +191,11 @@ DefNewGeneration::DefNewGeneration(ReservedSpace rs,
   Universe::heap()->barrier_set()->resize_covered_region(cmr);
 
   // eden
+  // cms下开启增量模式才是true
   if (GenCollectedHeap::heap()->collector_policy()->has_soft_ended_eden()) {
     _eden_space = new ConcEdenSpace(this);
   } else {
+    // 默认
     _eden_space = new EdenSpace(this);
   }
 
@@ -506,9 +508,10 @@ void DefNewGeneration::object_iterate(ObjectClosure* blk) {
 
 void DefNewGeneration::space_iterate(SpaceClosure* blk,
                                      bool usedOnly) {
-  blk->do_space(eden());
-  blk->do_space(from());
-  blk->do_space(to());
+  // 分别对eden、from、to执行通过space遍历执行闭包
+  blk->do_space(eden());// EdenSpace
+  blk->do_space(from());// ContiguousSpace
+  blk->do_space(to());// ContiguousSpace
 }
 
 // The last collection bailed out, we are running out of heap space,
@@ -609,13 +612,16 @@ void DefNewGeneration::collect(bool   full,
   // Not very pretty.
   CollectorPolicy* cp = gch->collector_policy();
 
+  // 2个FastScanClosure函数 （就是执行不执行gc_barrier）
   FastScanClosure fsc_with_no_gc_barrier(this, false);
   FastScanClosure fsc_with_gc_barrier(this, true);
 
+
+  // 负责扫描klass的KlassScanClosure函数
   KlassScanClosure klass_scan_closure(&fsc_with_no_gc_barrier,
                                       gch->rem_set()->klass_rem_set());
 
-  // 晋升失败对象的处理                                    
+  // 晋升失败对象的处理        FastEvacuateFollowersClosure                            
   set_promo_failure_scan_stack_closure(&fsc_with_no_gc_barrier);
   FastEvacuateFollowersClosure evacuate_followers(gch, _level, this,
                                                   &fsc_with_no_gc_barrier,
@@ -626,16 +632,16 @@ void DefNewGeneration::collect(bool   full,
 
   int so = SharedHeap::SO_AllClasses | SharedHeap::SO_Strings | SharedHeap::SO_CodeCache;
 
-  // 扫描指定代（老年代）
+  // 扫描当前代（年轻代）
   gch->gen_process_strong_roots(_level,
                                 true,  // Process younger gens, if any,
                                        // as strong roots.
                                 true,  // activate StrongRootsScope
                                 true,  // is scavenging
                                 SharedHeap::ScanningOption(so),
-                                &fsc_with_no_gc_barrier,
+                                &fsc_with_no_gc_barrier, // 非老年代使用无barrier
                                 true,   // walk *all* scavengable nmethods
-                                &fsc_with_gc_barrier,
+                                &fsc_with_gc_barrier, // 老年代的使用有gc_barrier
                                 &klass_scan_closure);
 
   // "evacuate followers".
@@ -677,11 +683,13 @@ void DefNewGeneration::collect(bool   full,
       gch->print_heap_change(gch_prev_used);
     }
     assert(!gch->incremental_collection_failed(), "Should be clear");
+  // 出现晋升失败（包含空间不足）  
   } else {
     assert(_promo_failure_scan_stack.is_empty(), "post condition");
     _promo_failure_scan_stack.clear(true); // Clear cached segments.
 
-    remove_forwarding_pointers();
+    remove_forwarding_pointers();// 移除前向指针
+    // !!! promotion failed打印
     if (PrintGCDetails) {
       gclog_or_tty->print(" (promotion failed) ");
     }
@@ -695,7 +703,7 @@ void DefNewGeneration::collect(bool   full,
     gch->set_incremental_collection_failed();
 
     // Inform the next generation that a promotion failure occurred.
-    _next_gen->promotion_failure_occurred();
+    _next_gen->promotion_failure_occurred();// 提醒老年代
     gc_tracer.report_promotion_failed(_promotion_failed_info);
 
     // Reset the PromotionFailureALot counters.

@@ -44,7 +44,8 @@ typedef GenericTaskQueueSet<OopTaskQueue, mtGC> OopTaskQueueSet;
 // Note: all classes deriving from this MUST call this do_barrier
 // method at the end of their own do_oop method!
 // Note: no do_oop defined, this is an abstract class.
-
+// 操作是对一个代的所有root遍历
+// 所有子类在实现do_oop方法的最后必须执行do_barrier方法
 class OopsInGenClosure : public ExtendedOopClosure {
  private:
   Generation*  _orig_gen;     // generation originally set in ctor
@@ -52,8 +53,8 @@ class OopsInGenClosure : public ExtendedOopClosure {
 
  protected:
   // Some subtypes need access.
-  HeapWord*    _gen_boundary; // start of generation
-  CardTableRS* _rs;           // remembered set
+  HeapWord*    _gen_boundary; // start of generation（代的开始）
+  CardTableRS* _rs;           // remembered set（概念是rs，实际结构是CardTable）
 
   // For assertions
   Generation* generation() { return _gen; }
@@ -61,6 +62,7 @@ class OopsInGenClosure : public ExtendedOopClosure {
 
   // Derived classes that modify oops so that they might be old-to-young
   // pointers must call the method below.
+  // 由于可能修改oop指针后，变成老年代指向年轻代的指针
   template <class T> void do_barrier(T* p);
 
   // Version for use by closures that may be called in parallel code.
@@ -87,6 +89,8 @@ class OopsInGenClosure : public ExtendedOopClosure {
 };
 
 // Super class for scan closures. It contains code to dirty scanned Klasses.
+// 扫描操作闭包函数的父类
+// 包含了变脏（dirty）已扫描的klass的操作
 class OopsInKlassOrGenClosure: public OopsInGenClosure {
   Klass* _scanned_klass;
  public:
@@ -103,6 +107,8 @@ class OopsInKlassOrGenClosure: public OopsInGenClosure {
 //
 // This closure will perform barrier store calls for ALL
 // pointers in scanned oops.
+// 用于扫描新生代DefNewGeneration的
+// 其中对所有已扫描opp的指针（pointer）执行 barrier store calls
 class ScanClosure: public OopsInKlassOrGenClosure {
  protected:
   DefNewGeneration* _g;

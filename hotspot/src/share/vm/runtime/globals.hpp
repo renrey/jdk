@@ -496,7 +496,7 @@ class CommandLineFlags {
                                                                             \
   diagnostic(bool, PrintCompressedOopsMode, false,                          \
           "Print compressed oops base address and encoding mode")           \
-                                                                            \
+ /* ObjectAlignmentInBytes 对象字节对齐的字节数*/                                                                          \
   lp64_product(intx, ObjectAlignmentInBytes, 8,                             \
           "Default object alignment in bytes, 8 is minimum")                \
                                                                             \

@@ -65,7 +65,7 @@ private:
 
   static bool          _thread_monitoring_contention_enabled;
   static bool          _thread_cpu_time_enabled;
-  static bool          _thread_allocated_memory_enabled;
+  static bool          _thread_allocated_memory_enabled;  
 
   // Need to keep the list of thread dump result that
   // keep references to Method* since thread dump can be
