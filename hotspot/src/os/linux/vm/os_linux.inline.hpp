@@ -131,6 +131,8 @@ inline int os::ftruncate(int fd, jlong length) {
 
 inline struct dirent* os::readdir(DIR* dirp, dirent *dbuf)
 {
+  #pragma GCC diagnostic push
+ #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   dirent* p;
   int status;
   assert(dirp != NULL, "just checking");
@@ -144,6 +146,7 @@ inline struct dirent* os::readdir(DIR* dirp, dirent *dbuf)
     return NULL;
   } else
     return p;
+  #pragma GCC diagnostic pop
 }
 
 inline int os::closedir(DIR *dirp) {
