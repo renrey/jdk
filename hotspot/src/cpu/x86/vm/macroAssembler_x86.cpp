@@ -726,6 +726,7 @@ Address MacroAssembler::as_Address(ArrayAddress adr) {
   return array;
 }
 
+// 64位版本
 int MacroAssembler::biased_locking_enter(Register lock_reg,
                                          Register obj_reg,
                                          Register swap_reg,
@@ -751,27 +752,36 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // Note that the runtime guarantees sufficient alignment of JavaThread
   // pointers to allow age to be placed into low bits
   // First check to see whether biasing is even enabled for this object
+  // 检查锁定当前是否偏向于我们的线程，并且检查epoch是否仍然有效。
+  // 请注意，运行时保证JavaThread指针具有足够的对齐性，以允许将年龄放入低位。
+  // 首先检查此对象是否启用了偏向锁。
   Label cas_label;
   int null_check_offset = -1;
   if (!swap_reg_contains_mark) {
     null_check_offset = offset();
-    movq(swap_reg, mark_addr);
+    movq(swap_reg, mark_addr); // swap_reg就是markword
   }
-  movq(tmp_reg, swap_reg);
-  andq(tmp_reg, markOopDesc::biased_lock_mask_in_place);
-  cmpq(tmp_reg, markOopDesc::biased_lock_pattern);
-  jcc(Assembler::notEqual, cas_label);
+  movq(tmp_reg, swap_reg);// 移动markword
+  andq(tmp_reg, markOopDesc::biased_lock_mask_in_place);// &markwod，得到后三位
+  cmpq(tmp_reg, markOopDesc::biased_lock_pattern); // 比较&运算得到的后三位是否101（偏向模式）
+  jcc(Assembler::notEqual, cas_label); // 不等（不是偏向模式）-》0，执行cas_label（其实就是返回），非偏向锁(可能其他锁、无锁)
+
+  // 是偏向锁
   // The bias pattern is present in the object's header. Need to check
   // whether the bias owner and the epoch are both still current.
-  load_prototype_header(tmp_reg, obj_reg);
-  orq(tmp_reg, r15_thread);
-  xorq(tmp_reg, swap_reg);
-  andq(tmp_reg, ~((int) markOopDesc::age_mask_in_place));
+  // 该对象的header存在偏向模式(bias pattern)。需要检查偏向owner与epoch是否仍然当前的。 
+  // 就是有偏向锁，看owner、epoch都是自己
+  load_prototype_header(tmp_reg, obj_reg);// 移动obj的原型头到tmp_reg 
+  orq(tmp_reg, r15_thread);// 或（只要有1就是1），r15_thread：线程信息的寄存器， 这里就是线程id+原型头 = 当前线程持有偏向锁的头
+  xorq(tmp_reg, swap_reg); // 异或(只有位上不同的才是1)markword，
+  andq(tmp_reg, ~((int) markOopDesc::age_mask_in_place)); // age位的归0 -》判断除了age位，的其他位是否相同（即and结果>0），因为异或就是用来判断是否相同
   if (counters != NULL) {
     cond_inc32(Assembler::zero,
                ExternalAddress((address) counters->anonymously_biased_lock_entry_count_addr()));
   }
-  jcc(Assembler::equal, done);
+  // 等于当前线程持有偏向锁，当前对象markword = 当前线程id+原型头的epoch+锁位
+  // 得到结论：原型头只是保存偏向epoch、后3位锁标记，持有偏向锁的线程id是只在对象头
+  jcc(Assembler::equal, done); // 相等-》大于0，直接执行done, 是当前偏向锁的持有者（以前加过or重入）
 
   Label try_revoke_bias;
   Label try_rebias;
@@ -781,13 +791,21 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // figure out more details about the state of the header in order to
   // know what operations can be legally performed on the object's
   // header.
-
+  // 此时我们知道头部具有偏向模式(bias pattern)，并且我们不是当前epoch的偏向owner。
+  // 我们需要了解header的状态的更多细节，以确定可以在对象header上合法执行哪些操作。
   // If the low three bits in the xor result aren't clear, that means
   // the prototype header is no longer biased and we have to revoke
   // the bias on this object.
-  testq(tmp_reg, markOopDesc::biased_lock_mask_in_place);
-  jcc(Assembler::notZero, try_revoke_bias);
+  // 如果异或(xor)结果中 低三位 不为零，说明原始头部不再偏向，我们需要撤销对该对象的偏向 
 
+  // （对象后3位101是偏向，但对象头与（线程id+原型头）三处可能不一样：54位线程id、2位epoch、后3位锁-》这里说明不是偏向锁的owner
+
+  // 先验证原型头是否还是偏向，万一当前不是偏向锁了
+  testq(tmp_reg, markOopDesc::biased_lock_mask_in_place); // testq：与运算，获取原型头的后3位
+  // 原型型头不是偏向，直接撤销对象的偏向（得到结论：偏向信息以原型头为准，对象的偏向只是保存线程id）
+  jcc(Assembler::notZero, try_revoke_bias); // 原型头后3位结果不等于0，需要执行revoke偏向
+                                            // -》原型头不偏向，撤销对象头的偏向
+  
   // Biasing is still enabled for this data type. See whether the
   // epoch of the current bias is still valid, meaning that the epoch
   // bits of the mark word are equal to the epoch bits of the
@@ -797,36 +815,59 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // that the current epoch is invalid in order to do this because
   // otherwise the manipulations it performs on the mark word are
   // illegal.
-  testq(tmp_reg, markOopDesc::epoch_mask_in_place);
-  jcc(Assembler::notZero, try_rebias);
+  // 仍然为该数据类型启用了偏向。查看当前偏向的epoch是否仍然有效，即markword的epoch=原型头(prototype header)的epoch。（请注意，原型头的epoch只在safepoint更改。）
+  // 如果无效，则尝试将对象重新偏向于当前线程。
+  // 请注意，我们执行这个操作前必须确保当前epoch无效，否则这个对markword的操作将是非法的。
+  // 总结：重新偏向前，必须验证epoch是无效的
 
+  // 原型头还是偏向（101）-》即还是偏向锁
+  // 验证是否有原型头epoch是否跟对象头的epoch相同
+  testq(tmp_reg, markOopDesc::epoch_mask_in_place); // 拿到epoch（2位），低9位到10位
+  // 原型头的epoch与对象epoch不同·，进行rebias重偏向  
+  jcc(Assembler::notZero, try_rebias);// 就是结果不等于0,需要重新偏向-》跳转try_rebias
+                                      // 原型头偏向且epoch不同，但偏向信息与对象的不一样-》rebias
+
+
+  // 这里原型头就是epoch跟后3位没问题，就是线程id不是当前owner                                 
   // The epoch of the current bias is still valid but we know nothing
   // about the owner; it might be set or it might be clear. Try to
   // acquire the bias of the object using an atomic operation. If this
   // fails we will go in to the runtime to revoke the object's bias.
   // Note that we first construct the presumed unbiased header so we
   // don't accidentally blow away another thread's valid bias.
+  // 当前偏向的epoch仍然有效（markword的epoch=原型头(prototype header)的epoch），但我们不知道owner是谁；它可能被设置，也可能被清除。
+  // 尝试使用原子操作获取对象的偏向。
+  // 如果失败，我们将进入runtime以撤销(revoke)对象的偏向。
+  // 请注意，我们首先构建假定的不带偏向的头部，以免意外地清除另一个线程的有效偏向。
+
+  // 重新生成持有偏向的头 ： 保留对象头的锁、age、epoch
   andq(swap_reg,
-       markOopDesc::biased_lock_mask_in_place | markOopDesc::age_mask_in_place | markOopDesc::epoch_mask_in_place);
+       markOopDesc::biased_lock_mask_in_place | markOopDesc::age_mask_in_place | markOopDesc::epoch_mask_in_place);    
   movq(tmp_reg, swap_reg);
-  orq(tmp_reg, r15_thread);
+  orq(tmp_reg, r15_thread);// 或，把线程id也加进去
+  // 多核下，lock保证缓存可见、顺序
   if (os::is_MP()) {
     lock();
   }
-  cmpxchgq(tmp_reg, Address(obj_reg, 0));
+  cmpxchgq(tmp_reg, Address(obj_reg, 0));// cas更新头到对象里（就是线程id的）
   // If the biasing toward our thread failed, this means that
   // another thread succeeded in biasing it toward itself and we
   // need to revoke that bias. The revocation will occur in the
   // interpreter runtime in the slow case.
+  // 如果向我们的线程偏向失败，这意味着另一个线程成功偏向，我们需要撤销该偏向。
+  // 当slow case时，这种撤销将在解释器运行时发生。
   if (counters != NULL) {
     cond_inc32(Assembler::zero,
                ExternalAddress((address) counters->anonymously_biased_lock_entry_count_addr()));
   }
   if (slow_case != NULL) {
-    jcc(Assembler::notZero, *slow_case);
+    jcc(Assembler::notZero, *slow_case); // cas不等于0，偏向锁不成功执行slowcase
   }
-  jmp(done);
+  jmp(done); // 完成,即加偏向锁成功
 
+
+  // 尝试偏向操作
+  // rebais重偏向：cas 对象头 为 线程id+原型头
   bind(try_rebias);
   // At this point we know the epoch has expired, meaning that the
   // current "bias owner", if any, is actually invalid. Under these
@@ -834,27 +875,42 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // value as the comparison value when doing the cas to acquire the
   // bias in the current epoch. In other words, we allow transfer of
   // the bias from one thread to another directly in this situation.
+  // 
+  // 此时已知epoch已经过期，这意味着即使有owner, 当前的owner实际上是无效的。
+  // 在这种情况下_only_，我们允许使用 当前header的值 作为比较值(compare), 在进行cas, 以获取当前epoch的偏向。
+  // 换句话说，在这种情况下，我们允许 直接 从一个线程将偏向传递给另一个线程
   //
   // FIXME: due to a lack of registers we currently blow away the age
   // bits in this situation. Should attempt to preserve them.
+  // 1. 加载原型头
   load_prototype_header(tmp_reg, obj_reg);
+  // 2. 加入线程id
   orq(tmp_reg, r15_thread);
+  // lock保证可见、顺序
   if (os::is_MP()) {
     lock();
   }
+  // 3. cas 对象：线程id+原型头
   cmpxchgq(tmp_reg, Address(obj_reg, 0));
   // If the biasing toward our thread failed, then another thread
   // succeeded in biasing it toward itself and we need to revoke that
   // bias. The revocation will occur in the runtime in the slow case.
+  // 如果偏向到我们的线程失败，
+  // 那么另一个线程成功地将其偏向于自己，我们需要撤销该偏向。
+  // 这种撤销（revoke）会发生在运行时，当发生slow case的时候。
   if (counters != NULL) {
     cond_inc32(Assembler::zero,
                ExternalAddress((address) counters->rebiased_lock_entry_count_addr()));
   }
   if (slow_case != NULL) {
+    // 不成功，就slowcase
     jcc(Assembler::notZero, *slow_case);
   }
-  jmp(done);
+  jmp(done);// 跳转done，加偏向锁成功
 
+
+  // 尝试撤销偏向 
+  // revoke ： 原型头重置对象头
   bind(try_revoke_bias);
   // The prototype mark in the klass doesn't have the bias bit set any
   // more, indicating that objects of this data type are not supposed
@@ -864,22 +920,30 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // that another thread raced us for the privilege of revoking the
   // bias of this particular object, so it's okay to continue in the
   // normal locking code.
+  // 类中的原型标记(prototype mark)不再有偏向位，表示该数据类型的对象不再应该被偏向。
+  // 我们将尝试将此对象的标记重置为原型值，并继续执行基于CAS的锁方案。
+  // 请注意，如果我们的CAS操作失败，这意味着另一个线程与我们竞争，以撤销该特定对象的偏向，因此可以继续执行通常锁的代码。（即monitor）
   //
   // FIXME: due to a lack of registers we currently blow away the age
   // bits in this situation. Should attempt to preserve them.
-  load_prototype_header(tmp_reg, obj_reg);
+  // 1. 加载原型头
+  load_prototype_header(tmp_reg, obj_reg); 
+  // lock保证可见顺序
   if (os::is_MP()) {
     lock();
   }
-  cmpxchgq(tmp_reg, Address(obj_reg, 0));
+  // 2. cas 对象头：原型头 =》重置
+  cmpxchgq(tmp_reg, Address(obj_reg, 0));// cas 更新java对象的头为原型-》重置 
   // Fall through to the normal CAS-based lock, because no matter what
   // the result of the above CAS, some thread must have succeeded in
   // removing the bias bit from the object's header.
+  // 继续执行常规的基于CAS的锁操作，因为无论上面CAS的结果如何，都必定有某个线程成功地清除了对象头部的偏置位。
   if (counters != NULL) {
     cond_inc32(Assembler::zero,
                ExternalAddress((address) counters->revoked_lock_entry_count_addr()));
   }
 
+  // cas_label就是返回
   bind(cas_label);
 
   return null_check_offset;

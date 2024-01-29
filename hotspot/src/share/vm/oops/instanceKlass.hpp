@@ -170,7 +170,7 @@ class InstanceKlass: public Klass {
   enum ClassState {
     allocated,                          // allocated (but not yet linked)
     loaded,                             // loaded and inserted in class hierarchy (but not linked yet)
-    linked,                             // successfully linked/verified (but not initialized yet)
+    linked,                             // successfully linked/verified (but not initialized yet) ，看着上2个状态都完成才能执行link
     being_initialized,                  // currently running class initializer
     fully_initialized,                  // initialized (successfull final state)
     initialization_error                // error happened during initialization

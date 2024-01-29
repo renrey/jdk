@@ -210,6 +210,7 @@ class CMSMarkStack: public CHeapObj<mtGC>  {
     if (isFull()) {
       return false;
     } else {
+      // 就是个数组
       _base[_index++] = ptr;
       NOT_PRODUCT(_max_depth = MAX2(_max_depth, _index));
       return true;
@@ -239,6 +240,7 @@ class CMSMarkStack: public CHeapObj<mtGC>  {
 
   // Forcibly reset the stack, losing all of its contents.
   void reset() {
+    // 下标归0
     _index = 0;
   }
 
@@ -248,6 +250,7 @@ class CMSMarkStack: public CHeapObj<mtGC>  {
   // Compute the least valued stack element.
   oop least_value(HeapWord* low) {
      oop least = (oop)low;
+     // 找到栈中地址小于low的最小地址
      for (size_t i = 0; i < _index; i++) {
        least = MIN2(least, _base[i]);
      }

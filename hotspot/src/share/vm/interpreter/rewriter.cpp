@@ -454,7 +454,9 @@ methodHandle Rewriter::rewrite_jsrs(methodHandle method, TRAPS) {
 }
 
 void Rewriter::rewrite(instanceKlassHandle klass, TRAPS) {
+  // 这里触发prepare，分配空间
   ResourceMark rm(THREAD);
+  // 这里就是符号引用转直接引用
   Rewriter     rw(klass, klass->constants(), klass->methods(), CHECK);
   // (That's all, folks.)
 }
@@ -470,6 +472,7 @@ Rewriter::Rewriter(instanceKlassHandle klass, constantPoolHandle cpool, Array<Me
   // determine index maps for Method* rewriting
   compute_index_maps();
 
+  // Object类执行
   if (RegisterFinalizersAtInit && _klass->name() == vmSymbols::java_lang_Object()) {
     bool did_rewrite = false;
     int i = _methods->length();
@@ -491,8 +494,10 @@ Rewriter::Rewriter(instanceKlassHandle klass, constantPoolHandle cpool, Array<Me
   int len = _methods->length();
   bool invokespecial_error = false;
 
+   // 遍历方法
   for (int i = len-1; i >= 0; i--) {
     Method* method = _methods->at(i);
+    // 重写方法
     scan_method(method, false, &invokespecial_error);
     if (invokespecial_error) {
       // If you get an error here, there is no reversing bytecodes

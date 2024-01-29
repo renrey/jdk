@@ -1378,8 +1378,10 @@ ReferenceProcessor::preclean_discovered_reflist(DiscoveredList&    refs_list,
       iter.remove();
       // Keep alive its cohort.
       iter.make_referent_alive();
+      // 指针压缩
       if (UseCompressedOops) {
         narrowOop* next_addr = (narrowOop*)java_lang_ref_Reference::next_addr(obj);
+        // 对指针所point对象, 执行keep_alive
         keep_alive->do_oop(next_addr);
       } else {
         oop* next_addr = (oop*)java_lang_ref_Reference::next_addr(obj);
@@ -1391,6 +1393,7 @@ ReferenceProcessor::preclean_discovered_reflist(DiscoveredList&    refs_list,
     }
   }
   // Close the reachable set
+  // 执行complete_gc
   complete_gc->do_void();
 
   NOT_PRODUCT(

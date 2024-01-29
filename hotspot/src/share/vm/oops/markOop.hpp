@@ -125,7 +125,7 @@ class markOopDesc: public oopDesc {
          age_shift                = lock_bits + biased_lock_bits, // 3，从低4位开始
          cms_shift                = age_shift + age_bits,
          hash_shift               = cms_shift + cms_bits,
-         epoch_shift              = hash_shift
+         epoch_shift              = hash_shift // 后9-10位
   };
 
   enum { lock_mask                = right_n_bits(lock_bits),//11
@@ -190,6 +190,7 @@ class markOopDesc: public oopDesc {
   // Indicates that the mark has the bias bit set but that it has not
   // yet been biased toward a particular thread
   bool is_biased_anonymously() const {
+    // 当前是偏向锁、且obj头的线程id是空
     return (has_bias_pattern() && (biased_locker() == NULL));
   }
   // Indicates epoch in which this bias was acquired. If the epoch
@@ -222,6 +223,7 @@ class markOopDesc: public oopDesc {
   bool is_marked()   const {
     return (mask_bits(value(), lock_mask_in_place) == marked_value);// 低2位11，代表被标记-清理标记了
   }
+  // 主要看是不是unlock（无锁，连偏向锁位不能是1）
   bool is_neutral()  const { return (mask_bits(value(), biased_lock_mask_in_place) == unlocked_value); }
 
   // Special temporary state of the markOop while being inflated.
@@ -274,11 +276,11 @@ class markOopDesc: public oopDesc {
     return markOop(value() | unlocked_value);
   }
   bool has_locker() const {
-    return ((value() & lock_mask_in_place) == locked_value);
+    return ((value() & lock_mask_in_place) == locked_value);// 00 ，纯重量lock
   }
   BasicLock* locker() const {
     assert(has_locker(), "check");
-    return (BasicLock*) value();
+    return (BasicLock*) value();// 就是locker-》00重量lock时，当前value是lock对象指针
   }
   bool has_monitor() const {
     return ((value() & monitor_value) != 0);
@@ -293,6 +295,8 @@ class markOopDesc: public oopDesc {
   }
   markOop displaced_mark_helper() const {
     assert(has_displaced_mark_helper(), "check");
+    // ~monitor_value： 11..101
+    // & ~monitor_value: 倒数第2位0，其他保留 
     intptr_t ptr = (value() & ~monitor_value);
     return *(markOop*)ptr;
   }
@@ -318,6 +322,8 @@ class markOopDesc: public oopDesc {
   }
   static markOop encode(ObjectMonitor* monitor) {
     intptr_t tmp = (intptr_t) monitor;
+    // 前n位：monitor地址（就是说末尾肯定是0）
+    // 后2位：10 （表示哪种锁）
     return (markOop) (tmp | monitor_value);
   }
   static markOop encode(JavaThread* thread, uint age, int bias_epoch) {

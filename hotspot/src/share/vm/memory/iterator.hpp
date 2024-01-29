@@ -265,6 +265,7 @@ class MarkingCodeBlobClosure : public CodeBlobClosure {
 
 // Applies an oop closure to all ref fields in code blobs
 // iterated over in an object iteration.
+// 对所有ref的执行闭包
 class CodeBlobToOopClosure: public MarkingCodeBlobClosure {
   OopClosure* _cl;
   bool _do_marking;

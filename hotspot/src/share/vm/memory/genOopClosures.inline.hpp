@@ -131,6 +131,7 @@ inline void ScanClosure::do_oop_nv(narrowOop* p) { ScanClosure::do_oop_work(p); 
 
 // NOTE! Any changes made here should also be made
 // in ScanClosure::do_oop_work()
+// 如ScanClosure一样 
 template <class T> inline void FastScanClosure::do_oop_work(T* p) {
   T heap_oop = oopDesc::load_heap_oop(p);
   // Should we copy the obj?

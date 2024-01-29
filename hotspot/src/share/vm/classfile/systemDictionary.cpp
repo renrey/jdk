@@ -220,8 +220,10 @@ Klass* SystemDictionary::resolve_or_null(Symbol* class_name, Handle class_loader
          err_msg("can not load classes with compiler thread: class=%s, classloader=%s",
                  class_name->as_C_string(),
                  class_loader.is_null() ? "null" : class_loader->klass()->name()->as_C_string()));
+  // 数组类                 
   if (FieldType::is_array(class_name)) {
     return resolve_array_class_or_null(class_name, class_loader, protection_domain, CHECK_NULL);
+  // Object  
   } else if (FieldType::is_obj(class_name)) {
     ResourceMark rm(THREAD);
     // Ignore wrapping L and ;.
@@ -776,6 +778,7 @@ Klass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
     if (!class_has_been_loaded) {
 
       // Do actual loading
+      // 价值instance_Klass
       k = load_instance_class(name, class_loader, THREAD);
 
       // For UnsyncloadClass only
@@ -1052,6 +1055,7 @@ Klass* SystemDictionary::parse_stream(Symbol* class_name,
     }
 
     // Rewrite and patch constant pool here.
+    // link  
     k->link_class(CHECK_NULL);
     if (cp_patches != NULL) {
       k->constants()->patch_resolved_references(cp_patches);
@@ -1295,9 +1299,11 @@ instanceKlassHandle SystemDictionary::load_instance_class(Symbol* class_name, Ha
       k = load_shared_class(class_name, class_loader, THREAD);
     }
 
+    // 未加载
     if (k.is_null()) {
       // Use VM class loader
       PerfTraceTime vmtimer(ClassLoader::perf_sys_classload_time());
+      // 执行load_class
       k = ClassLoader::load_classfile(class_name, CHECK_(nh));
     }
 
@@ -1307,6 +1313,8 @@ instanceKlassHandle SystemDictionary::load_instance_class(Symbol* class_name, Ha
     }
     return k;
   } else {
+// 使用用户定义Classloader进行加载
+
     // Use user specified class loader to load class. Call loadClass operation on class_loader.
     ResourceMark rm(THREAD);
 

@@ -32,7 +32,7 @@
 class BasicLock VALUE_OBJ_CLASS_SPEC {
   friend class VMStructs;
  private:
-  volatile markOop _displaced_header;
+  volatile markOop _displaced_header;  // markOopDesc对象指针， 即8b
  public:
   markOop      displaced_header() const               { return _displaced_header; }
   void         set_displaced_header(markOop header)   { _displaced_header = header; }
@@ -54,11 +54,20 @@ class BasicLock VALUE_OBJ_CLASS_SPEC {
 // alignment of the embedded BasicLock objects on such machines, we
 // put the embedded BasicLock at the beginning of the struct.
 
+// 一个 BasicObjectLock 将1个Java 对象与一个 BasicLock 相关联。它当前嵌入在一个解释器帧（interpreter frame）中。
+// 总结：1个BasicObjectLock会放入解释器栈中，代表对应的java对象与1个BasicLock对象
+// 
+// 由于某些机器对控制栈(control stack)有对齐(alignment)限制，解释器（interpreter）实际分配的空间可能包含BasicObjectLock末尾填充字（padding words）。
+// 此外，为了保证在这些机器上的'内嵌BasicLock对象'的对齐，我们将'内嵌BasicLock对象' 放置在结构体的开头。
+// 总结：保证在栈上也对齐，BasicObjectLock后也会使用在末尾padding来对齐，且把BasicLock放在开头
 class BasicObjectLock VALUE_OBJ_CLASS_SPEC {
   friend class VMStructs;
  private:
   BasicLock _lock;                                    // the lock, must be double word aligned
-  oop       _obj;                                     // object holds the lock;
+                                                      // 具体lock对象，必须2word 对齐（1word64位即8b），即64位上是16b对齐（没满则填充） 
+                                                      // BasicLock里占用8b 
+  oop       _obj;                                     // object holds the lock; 使用这个锁的java对象
+  // 
 
  public:
   // Manipulation

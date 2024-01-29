@@ -90,7 +90,9 @@
   }
 
   void get_cpool_and_tags(Register cpool, Register tags) {
+    // 获取常量池，存放到cpool
     get_constant_pool(cpool);
+    // 从常量池获取tags
     movptr(tags, Address(cpool, ConstantPool::tags_offset_in_bytes()));
   }
 

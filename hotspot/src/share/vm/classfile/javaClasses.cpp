@@ -640,6 +640,7 @@ void java_lang_Class::set_protection_domain(oop java_class, oop pd) {
 }
 
 oop java_lang_Class::init_lock(oop java_class) {
+  // oop就是oopDesc
   assert(_init_lock_offset != 0, "must be set");
   return java_class->obj_field(_init_lock_offset);
 }

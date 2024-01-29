@@ -146,13 +146,16 @@ IRT_END
 // Allocation
 
 IRT_ENTRY(void, InterpreterRuntime::_new(JavaThread* thread, ConstantPool* pool, int index))
+  // 拿到常量池中Klass的指针
   Klass* k_oop = pool->klass_at(index, CHECK);
+  // 生成instanceKlass的句柄
+  // 包含当前线程对象、instanceKlass地址
   instanceKlassHandle klass (THREAD, k_oop);
 
-  // Make sure we are not instantiating an abstract klass
+  // Make sure we are not instantiating an abstract klass 验证class不是抽象类
   klass->check_valid_for_instantiation(true, CHECK);
 
-  // Make sure klass is initialized
+  // Make sure klass is initialized， 确定类已经初始化了（加载）
   klass->initialize(CHECK);
 
   // At this point the class may not be fully initialized
@@ -558,6 +561,7 @@ IRT_END
 //%note synchronization_3
 
 //%note monitor_1
+// 这里是对应cpu处理字节码里，进入lock的处理
 IRT_ENTRY_NO_ASYNC(void, InterpreterRuntime::monitorenter(JavaThread* thread, BasicObjectLock* elem))
 #ifdef ASSERT
   thread->last_frame().interpreter_frame_verify_monitor(elem);
@@ -565,9 +569,13 @@ IRT_ENTRY_NO_ASYNC(void, InterpreterRuntime::monitorenter(JavaThread* thread, Ba
   if (PrintBiasedLockingStatistics) {
     Atomic::inc(BiasedLocking::slow_path_entry_count_addr());
   }
+
+  // 创建monitor对象的Handle（句柄），一个固定地址实现间接引用
+  // 保证下面程序通过这个固定地址找到monitor对象
   Handle h_obj(thread, elem->obj());
   assert(Universe::heap()->is_in_reserved_or_null(h_obj()),
          "must be NULL or an object");
+  // 偏向锁：fast       
   if (UseBiasedLocking) {
     // Retry fast entry if bias is revoked to avoid unnecessary inflation
     ObjectSynchronizer::fast_enter(h_obj, elem->lock(), true, CHECK);

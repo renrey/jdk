@@ -200,6 +200,7 @@ void VM_GenCollectFull::doit() {
   gch->do_full_collection(gch->must_clear_all_soft_refs(), _max_level);
 }
 
+// 大概是元数据分配不足，导致gc
 void VM_CollectForMetadataAllocation::doit() {
   SvcGCMarker sgcm(SvcGCMarker::FULL);
 
@@ -215,7 +216,9 @@ void VM_CollectForMetadataAllocation::doit() {
 
   if (_result == NULL) {
     if (UseConcMarkSweepGC) {
+      // 开启了类unload
       if (CMSClassUnloadingEnabled) {
+        // 元空间需要gc
         MetaspaceGC::set_should_concurrent_collect(true);
       }
       // For CMS expand since the collection is going to be concurrent.

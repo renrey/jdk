@@ -164,9 +164,13 @@ static volatile int MonitorPopulation = 0 ;      // # Extant -- in circulation
 // extremely sensitive to race condition. Be careful.
 
 void ObjectSynchronizer::fast_enter(Handle obj, BasicLock* lock, bool attempt_rebias, TRAPS) {
+  // 偏向锁
  if (UseBiasedLocking) {
+    // 不在safepoint才进行
     if (!SafepointSynchronize::is_at_safepoint()) {
+      // 这里会做撤销、rebias(重偏向-》获取偏向)
       BiasedLocking::Condition cond = BiasedLocking::revoke_and_rebias(obj, attempt_rebias, THREAD);
+      // 这里才是成功偏向锁
       if (cond == BiasedLocking::BIAS_REVOKED_AND_REBIASED) {
         return;
       }
@@ -177,6 +181,8 @@ void ObjectSynchronizer::fast_enter(Handle obj, BasicLock* lock, bool attempt_re
     assert(!obj->mark()->has_bias_pattern(), "biases should be revoked by now");
  }
 
+ // 非偏向锁都认为是慢
+ // 偏向未开启or偏向锁失败
  slow_enter (obj, lock, THREAD) ;
 }
 
@@ -222,27 +228,46 @@ void ObjectSynchronizer::fast_exit(oop object, BasicLock* lock, TRAPS) {
 // We don't need to use fast path here, because it must have been
 // failed in the interpreter/compiler code.
 void ObjectSynchronizer::slow_enter(Handle obj, BasicLock* lock, TRAPS) {
+  // lock：底层申请的锁对象
+  // obj：是当前线程、跟目标需要锁获取的java对象
+
+  // 目标java对象的markword
   markOop mark = obj->mark();
   assert(!mark->has_bias_pattern(), "should not see bias pattern here");
 
+  // 当前是无锁（后3位010）
   if (mark->is_neutral()) {
     // Anticipate successful CAS -- the ST of the displaced mark must
     // be visible <= the ST performed by the CAS.
+    // 1. lock对象（BasicLock）保存当前java对象的markword
+    // 锁对象BasicLock的_displaced_header指向当前java对象的markword
     lock->set_displaced_header(mark);
-    if (mark == (markOop) Atomic::cmpxchg_ptr(lock, obj()->mark_addr(), mark)) {
+    // 2. 目标java对象markword指针（原来是保存的是markword64位值非地址）指向lock对象
+    // 原子更新java对象的markword指针 更新成monitor对象地址
+    if (mark == (markOop) Atomic::cmpxchg_ptr(lock, obj()->mark_addr(), mark)) { // Atomic::cmpxchg_ptr: 原子更新操作，是否成功就是看返回是否条件，这里就是看是否返回条件mark
+      // 加锁成功：释放
       TEVENT (slow_enter: release stacklock) ;
       return ;
     }
     // Fall through to inflate() ...
+  // 当前有锁 
+  // has_locker：当前java对象持有00重量lock
+  // is_lock_owned:  判断当前线程是否持有这个lock对象，mark->locker() ：java对象的lock对象
   } else
   if (mark->has_locker() && THREAD->is_lock_owned((address)mark->locker())) {
-    assert(lock != mark->locker(), "must not re-lock the same lock");
-    assert(lock != (BasicLock*)obj->mark(), "don't relock with same BasicLock");
+    // 进来这就是当前是重量锁（00）&& 当前线程重入获取
+
+    assert(lock != mark->locker(), "must not re-lock the same lock");//要求这次加锁使用的lock对象，跟java对象的所使用的lock对象不是同一个
+    assert(lock != (BasicLock*)obj->mark(), "don't relock with same BasicLock");//等于上面的double check
+    // 得出结论：底层操作时，不能对同一个重复使用已持有的lock对象，主要好像重复是多余操作
+
+    // lock对象中用于保存java对象markword的header更新空？
     lock->set_displaced_header(NULL);
     return;
   }
 
 #if 0
+  // 这里进不了，没用的
   // The following optimization isn't particularly useful.
   if (mark->has_monitor() && mark->monitor()->is_entered(THREAD)) {
     lock->set_displaced_header (NULL) ;
@@ -254,8 +279,26 @@ void ObjectSynchronizer::slow_enter(Handle obj, BasicLock* lock, TRAPS) {
   // so it does not matter what the value is, except that it
   // must be non-zero to avoid looking like a re-entrant lock,
   // and must not look locked either.
+
+  // 有锁
+  // lock对象保存java对象的不被使用时的markword
+  //     unused_mark代表 对象不被使用时的markword，就是默认只有0...011（11代表不使用）
+  // 有个问题：这样原来年龄不就没了？
   lock->set_displaced_header(markOopDesc::unused_mark());
+  // 上面的更新指针到lock里，代表是重量级monitorlock的操作
+
+  // 目前看lock中_displaced_header存的markword都是010末尾的
+
+  // inflate-》锁膨胀（升级轻量级锁）
+  // ObjectMonitor：enter,参数当前线程 -》 阻塞获取锁资源
   ObjectSynchronizer::inflate(THREAD, obj())->enter(THREAD);
+  // 总结
+  //      1. 保证java对象的锁是ObjectMonitor ： 尝试锁膨胀起码到达轻量级
+  //      2. 对monitor对象（ObjectMonitor）进行enter操作：阻塞等待获取资源
+  // 锁变化
+  //      BasicLock -》 ObjectMonitor
+  // 核心：
+  //    ObjectMonitor::enter 
 }
 
 // This routine is used to handle interpreter/compiler slow case
@@ -263,6 +306,7 @@ void ObjectSynchronizer::slow_enter(Handle obj, BasicLock* lock, TRAPS) {
 // failed in the interpreter/compiler code. Simply use the heavy
 // weight monitor should be ok, unless someone find otherwise.
 void ObjectSynchronizer::slow_exit(oop object, BasicLock* lock, TRAPS) {
+  // 通过快速，加到的锁的退出
   fast_exit (object, lock, THREAD) ;
 }
 
@@ -358,7 +402,7 @@ ObjectLocker::ObjectLocker(Handle obj, Thread* thread, bool doLock) {
 
   if (_dolock) {
     TEVENT (ObjectLocker) ;
-
+    // 进入lock
     ObjectSynchronizer::fast_enter(_obj, &_lock, false, _thread);
   }
 }
@@ -1187,32 +1231,42 @@ ObjectMonitor* ObjectSynchronizer::inflate_helper(oop obj) {
 
 // Note that we could encounter some performance loss through false-sharing as
 // multiple locks occupy the same $ line.  Padding might be appropriate.
+// 多个锁由于占用多个锁导致伪共享而有性能损失，需要填充
 
 
+// inflate：膨胀
+// 就是升级成轻量级锁
 ObjectMonitor * ATTR ObjectSynchronizer::inflate (Thread * Self, oop object) {
   // Inflate mutates the heap ...
   // Relaxing assertion for bug 6320749.
   assert (Universe::verify_in_progress() ||
           !SafepointSynchronize::is_at_safepoint(), "invariant") ;
 
+  // 自旋膨胀！！！
+  // 把对象的锁状态变成轻量级monitor        
   for (;;) {
+    // markword
       const markOop mark = object->mark() ;
       assert (!mark->has_bias_pattern(), "invariant") ;
 
-      // The mark can be in one of the following states:
-      // *  Inflated     - just return
-      // *  Stack-locked - coerce it to inflated
-      // *  INFLATING    - busy wait for conversion to complete
-      // *  Neutral      - aggressively inflate the object.
-      // *  BIASED       - Illegal.  We should never see this
+      // The mark can be in one of the following states对下面几种状态处理: 
+      // *  Inflated(膨胀完成)     - just return直接返回
+      // *  Stack-locked(栈被锁了) - coerce it to inflated 强制变成Inflated
+      // *  INFLATING(正在膨胀）   - busy wait for conversion to complete 循环等待转换完成
+      // *  Neutral(中立)      - aggressively inflate the object. 主动膨胀对象 
+      // *  BIASED(偏向)       - Illegal.  We should never see this，非法的，进入这里应该看不到
+      // java对象的markword还可以代表几种的状态
 
       // CASE: inflated
+      // markword: 00...010
+      // 膨胀完成，就是轻量的monitor（10），直接返回
+      // 返回ObjectMonitor
       if (mark->has_monitor()) {
           ObjectMonitor * inf = mark->monitor() ;
           assert (inf->header()->is_neutral(), "invariant");
           assert (inf->object() == object, "invariant") ;
           assert (ObjectSynchronizer::verify_objmon_isinpool(inf), "monitor is invalid");
-          return inf ;
+          return inf ;// 返回当前ObjectMonitor对象
       }
 
       // CASE: inflation in progress - inflating over a stack-lock.
@@ -1221,6 +1275,10 @@ ObjectMonitor * ATTR ObjectSynchronizer::inflate (Thread * Self, oop object) {
       // The INFLATING value is transient.
       // Currently, we spin/yield/park and poll the markword, waiting for inflation to finish.
       // We could always eliminate polling by parking the thread on some auxiliary list.
+
+      // markword：0..000
+      // 目前java对象的锁 -》 在膨胀中（markword=0）,等待别的线程使得这个完成
+      // INFLATING 
       if (mark == markOopDesc::INFLATING()) {
          TEVENT (Inflate: spin while INFLATING) ;
          ReadStableMark(object) ;
@@ -1246,20 +1304,27 @@ ObjectMonitor * ATTR ObjectSynchronizer::inflate (Thread * Self, oop object) {
       // before or after the CAS(INFLATING) operation.
       // See the comments in omAlloc().
 
+      // markword: **..*00(后2位0)
+      // java对象锁是 重量lock
       if (mark->has_locker()) {
+          // 1. 申请ObjectMonitor(可能是复用的)
           ObjectMonitor * m = omAlloc (Self) ;
           // Optimistically prepare the objectmonitor - anticipate successful CAS
           // We do this before the CAS in order to minimize the length of time
           // in which INFLATING appears in the mark.
-          m->Recycle();
+          m->Recycle();// 重置属性
           m->_Responsible  = NULL ;
           m->OwnerIsThread = 0 ;
           m->_recursions   = 0 ;
           m->_SpinDuration = ObjectMonitor::Knob_SpinLimit ;   // Consider: maintain by type/class
 
+          // 2. 更新java对象锁状态从 有重量级lock（后2位0） 变为膨胀（全0）中
+          // 把java对象的markword指针更新成全0，代表膨胀中
           markOop cmp = (markOop) Atomic::cmpxchg_ptr (markOopDesc::INFLATING(), object->mark_addr(), mark) ;
+
+          // 失败，释放申请的monitor对象然后自旋重试
           if (cmp != mark) {
-             omRelease (Self, m, true) ;
+             omRelease (Self, m, true) ;//释放monitor对象资源
              continue ;       // Interference -- just retry
           }
 
@@ -1293,6 +1358,8 @@ ObjectMonitor * ATTR ObjectSynchronizer::inflate (Thread * Self, oop object) {
           // The owner can't die or unwind past the lock while our INFLATING
           // object is in the mark.  Furthermore the owner can't complete
           // an unlock on the object, either.
+
+          // 3. 从有重量lock-》膨胀中 ：成功
           markOop dmw = mark->displaced_mark_helper() ;
           assert (dmw->is_neutral(), "invariant") ;
 
@@ -1304,13 +1371,16 @@ ObjectMonitor * ATTR ObjectSynchronizer::inflate (Thread * Self, oop object) {
           // m->OwnerIsThread = 1. Note that a thread can inflate an object
           // that it has stack-locked -- as might happen in wait() -- directly
           // with CAS.  That is, we can avoid the xchg-NULL .... ST idiom.
-          m->set_owner(mark->locker());
-          m->set_object(object);
+          // monitor对象
+          m->set_owner(mark->locker()); // monitor的owner变成原来的重量级锁
+          m->set_object(object); // object就是当前java对象（代表这个monitor锁代表资源对象）
           // TODO-FIXME: assert BasicLock->dhw != 0.
 
           // Must preserve store ordering. The monitor state must
           // be stable at the time of publishing the monitor address.
-          guarantee (object->mark() == markOopDesc::INFLATING(), "invariant") ;
+          guarantee (object->mark() == markOopDesc::INFLATING(), "invariant") ;//验证是膨胀中
+          // java对象markword更新成轻量级锁状态（monitor对象地址+10轻量状态）
+          // 变成轻量级状态，就是膨胀完成
           object->release_set_mark(markOopDesc::encode(m));
 
           // Hopefully the performance counters are allocated on distinct cache lines
@@ -1325,6 +1395,7 @@ ObjectMonitor * ATTR ObjectSynchronizer::inflate (Thread * Self, oop object) {
                 object->klass()->external_name());
             }
           }
+          // 返回moniotr对象
           return m ;
       }
 
@@ -1339,9 +1410,10 @@ ObjectMonitor * ATTR ObjectSynchronizer::inflate (Thread * Self, oop object) {
       // would be useful.
 
       assert (mark->is_neutral(), "invariant");
+      // 1. 分配monitor对象(ObjectMonitor)
       ObjectMonitor * m = omAlloc (Self) ;
       // prepare m for installation - set monitor to initial state
-      m->Recycle();
+      m->Recycle();// 重整对象属性（因为ObjectMonitor是循环使用的）
       m->set_header(mark);
       m->set_owner(NULL);
       m->set_object(object);
@@ -1350,14 +1422,20 @@ ObjectMonitor * ATTR ObjectSynchronizer::inflate (Thread * Self, oop object) {
       m->_Responsible  = NULL ;
       m->_SpinDuration = ObjectMonitor::Knob_SpinLimit ;       // consider: keep metastats by type/class
 
+      // 2. 原子更新java对象的markword（64位）为轻量级monitor地址和状态（包含地址、轻量级状态）
+      //   markOopDesc::encode：用来表示轻量级monitor的对象markword， 前n位是ObjectMonitor地址前n位，后2位是10表示轻量
+      //   当前需要获取这个ObjectMonitor,只需要把markword后面2位当作0，就是ObjectMonitor的地址
       if (Atomic::cmpxchg_ptr (markOopDesc::encode(m), object->mark_addr(), mark) != mark) {
+         // 失败后的逻辑
+
+         // 把申请到的ObjectMonitor释放（会回到复用的list），然后重试
           m->set_object (NULL) ;
           m->set_owner  (NULL) ;
           m->OwnerIsThread = 0 ;
           m->Recycle() ;
-          omRelease (Self, m, true) ;
+          omRelease (Self, m, true) ;// 失败释放monitor资源
           m = NULL ;
-          continue ;
+          continue ;// 自旋重试
           // interference - the markword changed - just retry.
           // The state-transitions are one-way, so there's no chance of
           // live-lock -- "Inflated" is an absorbing state.
@@ -1375,6 +1453,8 @@ ObjectMonitor * ATTR ObjectSynchronizer::inflate (Thread * Self, oop object) {
             object->klass()->external_name());
         }
       }
+
+      // 3. 成功膨胀（这个monitor成为当前对象的锁对象），返回ObjectMonitor
       return m ;
   }
 }

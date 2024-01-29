@@ -22,6 +22,13 @@
             "locale": "cpp",
             "charconv": "cpp",
             "cstring": "cpp",
-            "xlocinfo": "cpp"
+            "xlocinfo": "cpp",
+            "string": "cpp",
+            "string_view": "cpp",
+            "unordered_map": "cpp",
+            "random": "cpp",
+            "__bit_reference": "cpp",
+            "bitset": "cpp",
+            "algorithm": "cpp"
       }
 }

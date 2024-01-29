@@ -59,13 +59,17 @@ class ParCompactionManager;
 class oopDesc {
   friend class VMStructs;
  private:
-  volatile markOop  _mark;
+ 
+  volatile markOop  _mark;// markword，虽然是指针，实际指针地址值就是markword的值，即8b或者4b
   union _metadata {
-    Klass*      _klass;
-    narrowKlass _compressed_klass;
+    Klass*      _klass; // 如果8b指针
+    narrowKlass _compressed_klass; // 指针压缩就4b
   } _metadata;
+  // 元数据联合体，指针压缩优化到4b
+  // 代表klass指针 
 
   // Fast access to barrier set.  Must be initialized.
+  // 屏障集合的指针
   static BarrierSet* _bs;
 
  public:

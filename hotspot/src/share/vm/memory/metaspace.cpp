@@ -1364,6 +1364,7 @@ size_t MetaspaceGC::inc_capacity_until_GC(size_t v) {
 size_t MetaspaceGC::dec_capacity_until_GC(size_t v) {
   assert_is_size_aligned(v, Metaspace::commit_alignment());
 
+  // 通过指针地址来表示大小
   return (size_t)Atomic::add_ptr(-(intptr_t)v, &_capacity_until_GC);
 }
 
@@ -1416,13 +1417,18 @@ void MetaspaceGC::compute_new_size() {
   const size_t used_after_gc = MetaspaceAux::allocated_capacity_bytes();
   const size_t capacity_until_GC = MetaspaceGC::capacity_until_GC();
 
-  const double minimum_free_percentage = MinMetaspaceFreeRatio / 100.0;
-  const double maximum_used_percentage = 1.0 - minimum_free_percentage;
+  // 最小要求空闲百分比
+  const double minimum_free_percentage = MinMetaspaceFreeRatio / 100.0; // 默认40%
+  // 反正变成可占用的上限：60%
+  const double maximum_used_percentage = 1.0 - minimum_free_percentage; // 
 
+  // 当前已占/最大可用百分比，得到总容量（期望）
   const double min_tmp = used_after_gc / maximum_used_percentage;
+  // 最小渴望容量
   size_t minimum_desired_capacity =
     (size_t)MIN2(min_tmp, double(max_uintx));
   // Don't shrink less than the initial generation size
+  // 但不能小于MetaspaceSize（已申请的）
   minimum_desired_capacity = MAX2(minimum_desired_capacity,
                                   MetaspaceSize);
 
@@ -1440,16 +1446,19 @@ void MetaspaceGC::compute_new_size() {
 
 
   size_t shrink_bytes = 0;
+  // 之前水位线 <小于 这次算出来的期望容量，需要增大
   if (capacity_until_GC < minimum_desired_capacity) {
     // If we have less capacity below the metaspace HWM, then
     // increment the HWM.
     size_t expand_bytes = minimum_desired_capacity - capacity_until_GC;
-    expand_bytes = align_size_up(expand_bytes, Metaspace::commit_alignment());
+    expand_bytes = align_size_up(expand_bytes, Metaspace::commit_alignment());// 对齐
     // Don't expand unless it's significant
+    // 需要增大，起码扩容的大小要达到MinMetaspaceExpansion（256k）
     if (expand_bytes >= MinMetaspaceExpansion) {
-      MetaspaceGC::inc_capacity_until_GC(expand_bytes);
+      MetaspaceGC::inc_capacity_until_GC(expand_bytes);// 增大_capacity_until_GC
     }
     if (PrintGCDetails && Verbose) {
+      // 扩容成功，更新水位
       size_t new_capacity_until_GC = capacity_until_GC;
       gclog_or_tty->print_cr("    expanding:"
                     "  minimum_desired_capacity: %6.1fKB"
@@ -1464,6 +1473,8 @@ void MetaspaceGC::compute_new_size() {
     return;
   }
 
+  // 这边就是当前水位 >= 期望总容量
+
   // No expansion, now see if we want to shrink
   // We would never want to shrink more than this
   size_t max_shrink_bytes = capacity_until_GC - minimum_desired_capacity;
@@ -1471,9 +1482,11 @@ void MetaspaceGC::compute_new_size() {
     max_shrink_bytes));
 
   // Should shrinking be considered?
+  // MaxMetaspaceFreeRatio = 70（一般都会，除非手动改成100）
   if (MaxMetaspaceFreeRatio < 100) {
+    // 基于MaxMetaspaceFreeRatio再算一次maximum_desired_capacity （以30%占用来算），即比刚算的还大
     const double maximum_free_percentage = MaxMetaspaceFreeRatio / 100.0;
-    const double minimum_used_percentage = 1.0 - maximum_free_percentage;
+    const double minimum_used_percentage = 1.0 - maximum_free_percentage;//30% 
     const double max_tmp = used_after_gc / minimum_used_percentage;
     size_t maximum_desired_capacity = (size_t)MIN2(max_tmp, double(max_uintx));
     maximum_desired_capacity = MAX2(maximum_desired_capacity,
@@ -1494,6 +1507,7 @@ void MetaspaceGC::compute_new_size() {
     assert(minimum_desired_capacity <= maximum_desired_capacity,
            "sanity check");
 
+    // maximum_desired_capacity还是小于之前水位线，需要缩容       
     if (capacity_until_GC > maximum_desired_capacity) {
       // Capacity too large, compute shrinking size
       shrink_bytes = capacity_until_GC - maximum_desired_capacity;
@@ -1536,9 +1550,10 @@ void MetaspaceGC::compute_new_size() {
   }
 
   // Don't shrink unless it's significant
+  // 缩容也是看MinMetaspaceExpansion
   if (shrink_bytes >= MinMetaspaceExpansion &&
       ((capacity_until_GC - shrink_bytes) >= MetaspaceSize)) {
-    MetaspaceGC::dec_capacity_until_GC(shrink_bytes);
+    MetaspaceGC::dec_capacity_until_GC(shrink_bytes);// 减少_capacity_until_GC
   }
 }
 

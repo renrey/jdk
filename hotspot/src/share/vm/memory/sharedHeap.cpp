@@ -151,13 +151,17 @@ void SharedHeap::process_strong_roots(bool activate_scope,
   // in a method not running in a GC worker.  Otherwise the GC worker
   // could be trying to change the termination condition while the task
   // is executing in another GC worker.
+  // Universe全局对象引用
   if (!_process_strong_tasks->is_task_claimed(SH_PS_Universe_oops_do)) {
     Universe::oops_do(roots);
   }
+  
+  // JNI柄
   // Global (strong) JNI handles
   if (!_process_strong_tasks->is_task_claimed(SH_PS_JNIHandles_oops_do))
     JNIHandles::oops_do(roots);
 
+  // 线程引用扫描
   // All threads execute this; the individual threads are task groups.
   CLDToOopClosure roots_from_clds(roots);
   CLDToOopClosure* roots_from_clds_p = (is_scavenging ? NULL : &roots_from_clds);
@@ -167,6 +171,7 @@ void SharedHeap::process_strong_roots(bool activate_scope,
     Threads::oops_do(roots, roots_from_clds_p, code_roots);
   }
 
+  // ObjectSynchronizer
   if (!_process_strong_tasks-> is_task_claimed(SH_PS_ObjectSynchronizer_oops_do))
     ObjectSynchronizer::oops_do(roots);
   if (!_process_strong_tasks->is_task_claimed(SH_PS_FlatProfiler_oops_do))
@@ -186,6 +191,7 @@ void SharedHeap::process_strong_roots(bool activate_scope,
     }
   }
 
+  // 类加载器，会执行klass_closure(元空间)
   if (!_process_strong_tasks->is_task_claimed(SH_PS_ClassLoaderDataGraph_oops_do)) {
     if (so & SO_AllClasses) {
       ClassLoaderDataGraph::oops_do(roots, klass_closure, !is_scavenging);
@@ -194,6 +200,8 @@ void SharedHeap::process_strong_roots(bool activate_scope,
     }
   }
 
+
+  // 字符常量池的
   // All threads execute the following. A specific chunk of buckets
   // from the StringTable are the individual tasks.
   if (so & SO_Strings) {
@@ -204,6 +212,7 @@ void SharedHeap::process_strong_roots(bool activate_scope,
     }
   }
 
+  // 代码缓存
   if (!_process_strong_tasks->is_task_claimed(SH_PS_CodeCache_oops_do)) {
     if (so & SO_CodeCache) {
       assert(code_roots != NULL, "must supply closure for code cache");

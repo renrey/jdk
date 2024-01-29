@@ -137,7 +137,7 @@ class Klass : public Metadata {
 
   // Class name.  Instance classes: java/lang/String, etc.  Array classes: [I,
   // [Ljava/lang/String;, etc.  Set to zero for all other kinds of classes.
-  Symbol*     _name;
+  Symbol*     _name; // 全限定类名
 
   // Cache of last observed secondary supertype
   Klass*      _secondary_super_cache;
@@ -145,9 +145,9 @@ class Klass : public Metadata {
   Array<Klass*>* _secondary_supers;
   // Ordered list of all primary supertypes
   Klass*      _primary_supers[_primary_super_limit];
-  // java/lang/Class instance mirroring this class
+  // java/lang/Class instance mirroring this class，堆中的代表这个类的Class对象，也叫镜像对象
   oop       _java_mirror;
-  // Superclass
+  // Superclass，父类指针
   Klass*      _super;
   // First subclass (NULL if none); _subklass->next_sibling() is next one
   Klass*      _subklass;
@@ -162,19 +162,22 @@ class Klass : public Metadata {
   ClassLoaderData* _class_loader_data;
 
   jint        _modifier_flags;  // Processed access flags, for use by Class.getModifiers.
-  AccessFlags _access_flags;    // Access flags. The class/interface distinction is stored here.
+  AccessFlags _access_flags;    // Access flags. The class/interface distinction is stored here. 访问限制
 
+
+  // 用于偏向锁的实现、分析监控
   // Biased locking implementation and statistics
   // (the 64-bit chunk goes first, to avoid some fragmentation)
-  jlong    _last_biased_lock_bulk_revocation_time;
-  markOop  _prototype_header;   // Used when biased locking is both enabled and disabled for this type
-  jint     _biased_lock_revocation_count;
+  jlong    _last_biased_lock_bulk_revocation_time; // 上次批量撤销的时间长度
+  markOop  _prototype_header;   // Used when biased locking is both enabled and disabled for this type ， 这个类所使用的偏向原型头
+  jint     _biased_lock_revocation_count; // 偏向锁撤销次数
 
   TRACE_DEFINE_KLASS_TRACE_ID;
 
+  // 用于对klass中对象的remember set
   // Remembered sets support for the oops in the klasses.
-  jbyte _modified_oops;             // Card Table Equivalent (YC/CMS support)
-  jbyte _accumulated_modified_oops; // Mod Union Equivalent (CMS support)
+  jbyte _modified_oops;             // Card Table Equivalent (YC/CMS support)，yc、cms使用的卡表
+  jbyte _accumulated_modified_oops; // Mod Union Equivalent (CMS support) cms使用mou io画丶丶
 
   // Constructor
   Klass();

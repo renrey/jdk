@@ -1875,6 +1875,7 @@ void CMSCollector::acquire_control_and_collect(bool full,
   releaseFreelistLocks();
   {
     MutexLockerEx x(CGC_lock, Mutex::_no_safepoint_check_flag);
+    // 前台gc线程需要等待
     if (_foregroundGCShouldWait) {
       // We are going to be waiting for action for the CMS thread;
       // it had better not be gone (for instance at shutdown)!
@@ -1889,6 +1890,7 @@ void CMSCollector::acquire_control_and_collect(bool full,
       CGC_lock->notify();
       assert(!ConcurrentMarkSweepThread::vm_thread_wants_cms_token(),
              "Possible deadlock");
+      // 前台gc阻塞等待       
       while (_foregroundGCShouldWait) {
         // wait for notification
         CGC_lock->wait(Mutex::_no_safepoint_check_flag);
@@ -1988,7 +1990,9 @@ NOT_PRODUCT(
 void CMSCollector::compute_new_size() {
   assert_locked_or_safepoint(Heap_lock);
   FreelistLocker z(this);
+  // 计算Metaspace新的用于诱发gc的高水位
   MetaspaceGC::compute_new_size();
+  // 
   _cmsGen->compute_new_size_free_list();
 }
 
@@ -2194,6 +2198,7 @@ void CMSCollector::do_mark_sweep_work(bool clear_all_soft_refs,
   }
   switch (_collectorState) {
     case Idling:
+      // 空闲状态下-》 InitialMarking
       if (first_state == Idling || should_start_over) {
         // The background GC was not active, or should
         // restarted from scratch;  start the cycle.
@@ -2203,6 +2208,7 @@ void CMSCollector::do_mark_sweep_work(bool clear_all_soft_refs,
       // was in progress and has now finished.  No need to do it
       // again.  Leave the state as Idling.
       break;
+    // 前台gc不执行  precleaning ， 直接进入到
     case Precleaning:
       // In the foreground case don't do the precleaning since
       // it is not done concurrently and there is extra work
@@ -2334,7 +2340,7 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
 
       // Clear the MetaspaceGC flag since a concurrent collection
       // is starting but also clear it after the collection.
-      MetaspaceGC::set_should_concurrent_collect(false);
+      MetaspaceGC::set_should_concurrent_collect(false); // gc开始，标志更新
     }
     // Decide if we want to enable class unloading as part of the
     // ensuing concurrent GC cycle.
@@ -2397,6 +2403,7 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
     {
       // Check if the FG collector wants us to yield.
       CMSTokenSync x(true); // is cms thread
+      // 这里会判断是否需要阻塞等待前台gc
       if (waitForForegroundGC()) {
         // We yielded to a foreground GC, nothing more to be
         // done this round.
@@ -2507,7 +2514,8 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
                                              gch->prev_gen(_cmsGen)->capacity(),
                                              _cmsGen->free());
         }
-
+      // 这个状态代表清理已完成，后台gc也被任务已完成  
+      // 就是些后置处理，但垃圾已回收完成
       case Resizing: {
         // Sweeping has been completed...
         // At this point the background collection has completed.
@@ -2519,7 +2527,7 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
           MutexLockerEx       y(Heap_lock, Mutex::_no_safepoint_check_flag);
           CMSTokenSync        z(true);   // not strictly needed.
           if (_collectorState == Resizing) {
-            compute_new_size();
+            compute_new_size(); // 计算新大小
             save_heap_summary();
             _collectorState = Resetting;
           } else {
@@ -2534,7 +2542,7 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
         reset(true);
         assert(_collectorState == Idling, "Collector state should "
           "have changed");
-
+        // 重置  
         MetaspaceGC::set_should_concurrent_collect(false);
 
         stats().record_cms_end();
@@ -2542,6 +2550,7 @@ void CMSCollector::collect_in_background(bool clear_all_soft_refs, GCCause::Caus
         // calls to here because a preempted background collection
         // has it's state set to "Resetting".
         break;
+      // 空闲，即上面已完成   
       case Idling:
       default:
         ShouldNotReachHere();
@@ -3747,7 +3756,7 @@ void CMSCollector::checkpointRootsInitial(bool asynch) {
     checkpointRootsInitialWork(asynch);
     // enable ("weak") refs discovery
     rp->enable_discovery(true /*verify_disabled*/, true /*check_no_refs*/);
-    // 更新
+    // 更新新状态-》已完成标记
     _collectorState = Marking;
   } else {
     // (Weak) Refs discovery: this is controlled from genCollectedHeap::do_collection
@@ -3804,6 +3813,7 @@ void CMSCollector::checkpointRootsInitialWork(bool asynch) {
   // in this step. 在同步收集的情况下会忽略remark步骤，所以在这个步骤里捕获所有的nmethod oops很重要
   // The final 'true' flag to gen_process_strong_roots will ensure this.
   // If 'async' is true, we can relax the nmethod tracing. 如果 'async' 为 true，我们可以放宽对 nmethod 的追踪。
+  // 对非老年代执行的遍历-》推理下，就是从
   MarkRefsIntoClosure notOlder(_span, &_markBitMap);
 
   // 就是按分代的堆
@@ -3823,6 +3833,7 @@ void CMSCollector::checkpointRootsInitialWork(bool asynch) {
   // so that we can guarantee that the remark finds them.
   ClassLoaderDataGraph::remember_new_clds(true);
 
+  // CLD: class loader data
   // Whenever a CLD is found, it will be claimed before proceeding to mark
   // the klasses. The claimed marks need to be cleared before marking starts.
   ClassLoaderDataGraph::clear_claimed_marks();
@@ -3860,16 +3871,16 @@ void CMSCollector::checkpointRootsInitialWork(bool asynch) {
       // CardTableRS::prepare_for_younger_refs_iterate
       gch->rem_set()->prepare_for_younger_refs_iterate(false); // Not parallel.
       // GenCollectedHeap::gen_process_strong_roots（gen_process_strong_roots(int level）
-      // 对这个（level）老年代执行扫描root的操作
+      // 对堆中非老年（年轻代、jni句柄、类加载器）代的root遍历执行
       gch->gen_process_strong_roots(_cmsGen->level(), // 老年代就是1（gen数组的第2个）
                                     true,   // younger gens are roots，是否扫描年轻代作为根
                                     true,   // activate StrongRootsScope
                                     false,  // not scavenging
                                     SharedHeap::ScanningOption(roots_scanning_options()),
-                                    &notOlder, // 传入地址，用于扫描非老年代的引用
+                                    &notOlder, // 传入地址，用于扫描非老年代的root执行MarkRefsIntoClosure
                                     true,   // walk all of code cache if (so & SO_CodeCache)
-                                    NULL, // 未传入老年代
-                                    &klass_closure);
+                                    NULL, // 未传入老年代遍历闭包函数
+                                    &klass_closure); // 对（元空间）Klass实例执行的（实际也是执行MarkRefsIntoClosure）
     }
   }
 
@@ -3924,6 +3935,8 @@ bool CMSCollector::markFromRoots(bool asynch) {
 
     // 执行从root开始扫描
     res = markFromRootsWork(asynch);
+
+
     if (res) {
       // 成功变为preclean状态
       _collectorState = Precleaning;
@@ -4603,6 +4616,9 @@ bool CMSCollector::do_marking_st(bool asynch) {
     &_markStack, CMSYield && asynch);
   // the last argument to iterate indicates whether the iteration
   // should be incremental with periodic yields.
+
+  // 遍历_markBitMap （也就是 初始化标记时，标记的地方）， 执行MarkFromRootsClosure
+  // 关键！！！
   _markBitMap.iterate(&markFromRootsClosure);
   // If _restart_addr is non-NULL, a marking stack overflow
   // occurred; we need to do a fresh iteration from the
@@ -4633,7 +4649,7 @@ bool CMSCollector::do_marking_st(bool asynch) {
 }
 
 void CMSCollector::preclean() {
-  check_correct_thread_executing();
+                                check_correct_thread_executing();
   assert(Thread::current()->is_ConcurrentGC_thread(), "Wrong thread");
   verify_work_stacks_empty();
   verify_overflow_empty();
@@ -4642,22 +4658,26 @@ void CMSCollector::preclean() {
     if (!CMSEdenChunksRecordAlways) {
       _eden_chunk_index = 0;
     }
+    // eden使用、容量
     size_t used = get_eden_used();
     size_t capacity = get_eden_capacity();
     // Don't start sampling unless we will get sufficiently
     // many samples.
-    if (used < (capacity/(CMSScheduleRemarkSamplingRatio * 100)
+    // 默认eden使用小于20%，开始sample
+    if (used < (capacity/(CMSScheduleRemarkSamplingRatio * 100) //CMSScheduleRemarkSamplingRatio=5，CMSScheduleRemarkEdenPenetration=50
                 * CMSScheduleRemarkEdenPenetration)) {
       _start_sampling = true;
     } else {
       _start_sampling = false;
     }
     TraceCPUTime tcpu(PrintGCDetails, true, gclog_or_tty);
-    CMSPhaseAccounting pa(this, "preclean", !PrintGCDetails);
+    
+    // 清理REf
     // CMSPrecleanRefLists1：：默认开启，CMSPrecleanRefLists1：默认关闭
     preclean_work(CMSPrecleanRefLists1, CMSPrecleanSurvivors1);
   }
   CMSTokenSync x(true); // is cms thread
+  // 开启preclean了
   if (CMSPrecleaningEnabled) {
     sample_eden();
     _collectorState = AbortablePreclean;
@@ -4789,6 +4809,7 @@ size_t CMSCollector::preclean_work(bool clean_refs, bool clean_survivor) {
 
   // Precleaning is currently not MT but the reference processor
   // may be set for MT.  Disable it temporarily here.
+  // 恢复业务线程
   ReferenceProcessor* rp = ref_processor();
   ReferenceProcessorMTDiscoveryMutator rp_mut_discovery(rp, false);
 
@@ -4826,6 +4847,7 @@ size_t CMSCollector::preclean_work(bool clean_refs, bool clean_survivor) {
     // tweaking for better performance and some restructuring
     // for cleaner interfaces.
     GCTimer *gc_timer = NULL; // Currently not tracing concurrent phases
+    // 执行preclean
     rp->preclean_discovered_references(
           rp->is_alive_non_header(), &keep_alive, &complete_trace, &yield_cl,
           gc_timer);
@@ -6767,6 +6789,7 @@ void CMSCollector::do_CMS_operation(CMS_op_type op, GCCause::Cause gc_cause) {
       }
       break;
     }
+    // 最终标记
     case CMS_op_checkpointRootsFinal: {
       SvcGCMarker sgcm(SvcGCMarker::OTHER);
       checkpointRootsFinal(true,    // asynch
@@ -6996,14 +7019,17 @@ void CMSMarkStack::expand() {
     return;
   }
   // Double capacity if possible
+
+  // 扩容成原来2倍
   size_t new_capacity = MIN2(_capacity*2, MarkStackSizeMax);
   // Do not give up existing stack until we have managed to
   // get the double capacity that we desired.
+  // 申请2倍的空间
   ReservedSpace rs(ReservedSpace::allocation_align_size_up(
                    new_capacity * sizeof(oop)));
   if (rs.is_reserved()) {
     // Release the backing store associated with old stack
-    _virtual_space.release();
+    _virtual_space.release();// 释放旧栈
     // Reinitialize virtual space for new stack
     if (!_virtual_space.initialize(rs, rs.size())) {
       fatal("Not enough swap for expanded marking stack");
@@ -7043,10 +7069,12 @@ MarkRefsIntoClosure::MarkRefsIntoClosure(
 void MarkRefsIntoClosure::do_oop(oop obj) {
   // if p points into _span, then mark corresponding bit in _markBitMap
   assert(obj->is_oop(), "expected an oop");
+  // 对象的头地址
   HeapWord* addr = (HeapWord*)obj;
+  // 头地址在_span范围内中，等于有效可以标记
   if (_span.contains(addr)) {
     // this should be made more efficient
-    _bitMap->mark(addr);
+    _bitMap->mark(addr);// 进行标记
   }
 }
 
@@ -7535,11 +7563,17 @@ bool MarkFromRootsClosure::do_bit(size_t offset) {
     _skipBits--;
     return true;
   }
+
+  // 转成具体地址
+  // offset：应该是偏移量，1个代表1b
   // convert offset into a HeapWord*
   HeapWord* addr = _bitMap->startWord() + offset;
+
+
   assert(_bitMap->endWord() && addr < _bitMap->endWord(),
          "address out of range");
   assert(_bitMap->isMarked(addr), "tautology");
+  // 后一位也被标记了
   if (_bitMap->isMarked(addr+1)) {
     // this is an allocated but not yet initialized object
     assert(_skipBits == 0, "tautology");
@@ -7574,6 +7608,7 @@ bool MarkFromRootsClosure::do_bit(size_t offset) {
       return true;
     }
   }
+  // 扫描
   scanOopsInOop(addr);
   return true;
 }
@@ -7616,13 +7651,13 @@ void MarkFromRootsClosure::scanOopsInOop(HeapWord* ptr) {
   assert(_markStack->isEmpty(),
          "should drain stack to limit stack usage");
   // convert ptr to an oop preparatory to scanning
-  oop obj = oop(ptr);
+  oop obj = oop(ptr);// 对象指针
   // Ignore mark word in verification below, since we
   // may be running concurrent with mutators.
   assert(obj->is_oop(true), "should be an oop");
   assert(_finger <= ptr, "_finger runneth ahead");
   // advance the finger to right end of this object
-  _finger = ptr + obj->size();
+  _finger = ptr + obj->size();// 对象尾部指针
   assert(_finger > ptr, "we just incremented it above");
   // On large heaps, it may take us some time to get through
   // the marking phase (especially if running iCMS). During
@@ -7659,17 +7694,27 @@ void MarkFromRootsClosure::scanOopsInOop(HeapWord* ptr) {
   DEBUG_ONLY(})
   // Note: the finger doesn't advance while we drain
   // the stack below.
+
+  // 应该是实现栈操作的扫描函数
+  // 即通过栈实现向下dfs，后序遍历
   PushOrMarkClosure pushOrMarkClosure(_collector,
                                       _span, _bitMap, _markStack,
                                       _finger, this);
+
+  // 1.把当前对象入栈                                    
   bool res = _markStack->push(obj);
   assert(res, "Empty non-zero size stack should have space for single push");
+
+  // 2. 循环出栈，实现递归效果（后续）
   while (!_markStack->isEmpty()) {
+    // 1. 弹出
     oop new_oop = _markStack->pop();
     // Skip verifying header mark word below because we are
     // running concurrent with mutators.
     assert(new_oop->is_oop(true), "Oops! expected to pop an oop");
     // now scan this oop's oops
+
+    //  遍历扫引用！！！
     new_oop->oop_iterate(&pushOrMarkClosure);
     do_yield_check();
   }
@@ -7974,9 +8019,11 @@ void CMSCollector::lower_restart_addr(HeapWord* low) {
 // in CMSCollector's _restart_address.
 void PushOrMarkClosure::handle_stack_overflow(HeapWord* lost) {
   // Remember the least grey address discarded
-  HeapWord* ra = (HeapWord*)_markStack->least_value(lost);
+  // 因为只有被标记（灰）才会入栈
+  HeapWord* ra = (HeapWord*)_markStack->least_value(lost);// 最低的灰
   _collector->lower_restart_addr(ra);
-  _markStack->reset();  // discard stack contents
+  _markStack->reset();  // discard stack contents，清空栈(下标归0)
+  // 栈扩容
   _markStack->expand(); // expand the stack if possible
 }
 
@@ -7997,6 +8044,7 @@ void Par_PushOrMarkClosure::handle_stack_overflow(HeapWord* lost) {
 
 void CMKlassClosure::do_klass(Klass* k) {
   assert(_oop_closure != NULL, "Not initialized?");
+  // 对metadata对象Klass执行闭包
   k->oops_do(_oop_closure);
 }
 
@@ -8004,27 +8052,32 @@ void PushOrMarkClosure::do_oop(oop obj) {
   // Ignore mark word because we are running concurrent with mutators.
   assert(obj->is_oop_or_null(true), "expected an oop or NULL");
   HeapWord* addr = (HeapWord*)obj;
+  // 当前代包含这个对象（非本代的不处理），且未被标记
   if (_span.contains(addr) && !_bitMap->isMarked(addr)) {
     // Oop lies in _span and isn't yet grey or black
-    _bitMap->mark(addr);            // now grey
+    _bitMap->mark(addr);
+    // 还在父部对象的尾部前            // now grey，变灰-》被标记
     if (addr < _finger) {
       // the bit map iteration has already either passed, or
       // sampled, this bit in the bit map; we'll need to
       // use the marking stack to scan this oop's oops.
       bool simulate_overflow = false;
-      NOT_PRODUCT(
+      NOT_PRODUCT(// debug模拟stack溢出
         if (CMSMarkStackOverflowALot &&
             _collector->simulate_overflow()) {
           // simulate a stack overflow
           simulate_overflow = true;
         }
       )
+
+      // 这个对象入栈
       if (simulate_overflow || !_markStack->push(obj)) { // stack overflow
         if (PrintCMSStatistics != 0) {
           gclog_or_tty->print_cr("CMS marking stack overflow (benign) at "
                                  SIZE_FORMAT, _markStack->capacity());
         }
         assert(simulate_overflow || _markStack->isFull(), "Else push should have succeeded");
+        // 栈溢出处理
         handle_stack_overflow(addr);
       }
     }
@@ -8042,9 +8095,13 @@ void Par_PushOrMarkClosure::do_oop(oop obj) {
   // Ignore mark word because we are running concurrent with mutators.
   assert(obj->is_oop_or_null(true), "expected an oop or NULL");
   HeapWord* addr = (HeapWord*)obj;
+
+  // 当前代包含了这个对象地址（验证是否目标代的对象），又没标记（可能其他对象引用这个对象）
   if (_whole_span.contains(addr) && !_bit_map->isMarked(addr)) {
     // Oop lies in _span and isn't yet grey or black
     // We read the global_finger (volatile read) strictly after marking oop
+
+    // 标记-》变灰了
     bool res = _bit_map->par_mark(addr);    // now grey
     volatile HeapWord** gfa = (volatile HeapWord**)_global_finger_addr;
     // Should we push this marked oop on our stack?
@@ -8054,7 +8111,7 @@ void Par_PushOrMarkClosure::do_oop(oop obj) {
     //      then nothing to do
     // -- else push on work queue
     if (   !res       // someone else marked it, they will deal with it
-        || (addr >= *gfa)  // will be scanned in a later task
+        || (addr >= *gfa)  // will be scanned in a later task， 
         || (_span.contains(addr) && addr >= _finger)) { // later in this chunk
       return;
     }
@@ -8069,6 +8126,8 @@ void Par_PushOrMarkClosure::do_oop(oop obj) {
         simulate_overflow = true;
       }
     )
+
+     
     if (simulate_overflow ||
         !(_work_queue->push(obj) || _overflow_stack->par_push(obj))) {
       // stack overflow

@@ -248,15 +248,20 @@ public:
 
  protected:                         // protected for jvmtiRawMonitor
   void *  volatile _owner;          // pointer to owning thread OR BasicLock
+                                    // 当前持有资源的线程，或者是BasicLock
   volatile jlong _previous_owner_tid; // thread id of the previous owner of the monitor
   volatile intptr_t  _recursions;   // recursion count, 0 for first entry
  private:
-  int OwnerIsThread ;               // _owner is (Thread *) vs SP/BasicLock
+  int OwnerIsThread ;               // _owner is (Thread *) vs SP/BasicLock,用来_owner类型
   ObjectWaiter * volatile _cxq ;    // LL of recently-arrived threads blocked on entry.
                                     // The list is actually composed of WaitNodes, acting
                                     // as proxies for Threads.
+                                    // 最近才阻塞的线程队列
+                                    // 1. 头插
+
  protected:
   ObjectWaiter * volatile _EntryList ;     // Threads blocked on entry or reentry.
+  // 阻塞的线程队列
  private:
   Thread * volatile _succ ;          // Heir presumptive thread - used for futile wakeup throttling
   Thread * volatile _Responsible ;
@@ -280,6 +285,9 @@ public:
  private:
  protected:
   ObjectWaiter * volatile _WaitSet; // LL of threads wait()ing on the monitor
+  // 调用了wait()的线程队列
+  // 1. 循环链表，head的prev指向tail
+  // 2. 尾插
  private:
   volatile int _WaitSetLock;        // protects Wait Queue - simple spinlock
 

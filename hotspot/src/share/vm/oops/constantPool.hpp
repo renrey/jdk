@@ -88,7 +88,7 @@ class ConstantPool : public Metadata {
  private:
   Array<u1>*           _tags;        // the tag array describing the constant pool's contents
   ConstantPoolCache*   _cache;       // the cache holding interpreter runtime information
-  InstanceKlass*       _pool_holder; // the corresponding class
+  InstanceKlass*       _pool_holder; // the corresponding class, 第3b
   Array<u2>*           _operands;    // for variable-sized (InvokeDynamic) nodes, usually empty
 
   // Array of resolved objects from the constant pool and map from resolved

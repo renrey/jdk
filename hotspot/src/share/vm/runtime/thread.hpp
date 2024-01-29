@@ -258,7 +258,7 @@ class Thread: public ThreadShadow {
   friend class ThreadLocalStorage;
   friend class GC_locker;
 
-  ThreadLocalAllocBuffer _tlab;                 // Thread-local eden
+  ThreadLocalAllocBuffer _tlab;                 // Thread-local eden, 在eden区的tlab区域
   jlong _allocated_bytes;                       // Cumulative number of bytes allocated on
                                                 // the Java heap
 
@@ -615,6 +615,8 @@ public:
   static ByteSize stack_base_offset()            { return byte_offset_of(Thread, _stack_base ); }
   static ByteSize stack_size_offset()            { return byte_offset_of(Thread, _stack_size ); }
 
+// tlab_top_offset
+// 对应offset就是_tlab开始算的
 #define TLAB_FIELD_OFFSET(name) \
   static ByteSize tlab_##name##_offset()         { return byte_offset_of(Thread, _tlab) + ThreadLocalAllocBuffer::name##_offset(); }
 
@@ -783,8 +785,8 @@ typedef void (*ThreadFunction)(JavaThread*, TRAPS);
 class JavaThread: public Thread {
   friend class VMStructs;
  private:
-  JavaThread*    _next;                          // The next thread in the Threads list
-  oop            _threadObj;                     // The Java level thread object
+  JavaThread*    _next;                          // The next thread in the Threads list, 线程list的next
+  oop            _threadObj;                     // The Java level thread object，实际java thread对象
 
 #ifdef ASSERT
  private:

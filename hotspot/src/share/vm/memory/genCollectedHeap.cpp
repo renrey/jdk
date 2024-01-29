@@ -615,10 +615,11 @@ gen_process_strong_roots(int level,
   } else {
     bool do_code_marking = (activate_scope || nmethod::oops_do_marking_is_active());
     CodeBlobToOopClosure code_roots(not_older_gens, /*do_marking=*/ do_code_marking);
+    // 非分代堆的扫描
     SharedHeap::process_strong_roots(activate_scope, is_scavenging, so,
                                      not_older_gens, &code_roots, klass_closure);
   }
-  // 年轻代扫描
+  // 年轻代root扫描
   if (younger_gens_as_roots) {
     if (!_gen_process_strong_tasks->is_task_claimed(GCH_PS_younger_gens)) {
       for (int i = 0; i < level; i++) {
@@ -633,7 +634,7 @@ gen_process_strong_roots(int level,
       not_older_gens->reset_generation();
     }
   }
-  // 老年代扫描，
+  // 老年代root扫描，
   // 并行时，多线程扫描老年代
   // When collection is parallel, all threads get to cooperate to do
   // older-gen scanning.

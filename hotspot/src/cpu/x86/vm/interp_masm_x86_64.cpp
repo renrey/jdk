@@ -687,11 +687,16 @@ void InterpreterMacroAssembler::remove_activation(
 //      rscratch1, rscratch2 (scratch regs)
 void InterpreterMacroAssembler::lock_object(Register lock_reg) {
   assert(lock_reg == c_rarg1, "The argument is only for looks. It must be c_rarg1");
-
+  
+  // 配置上直接要求UseHeavyMonitors（重量级锁）
+  // 即UseHeavyMonitors （重量级锁）是最外层控制
   if (UseHeavyMonitors) {
+    // 重量锁直接运行monitor
     call_VM(noreg,
             CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter),
             lock_reg);
+
+  // 下面就是非直接重量lock的过程          
   } else {
     Label done;
 
@@ -700,36 +705,48 @@ void InterpreterMacroAssembler::lock_object(Register lock_reg) {
 
     const int obj_offset = BasicObjectLock::obj_offset_in_bytes();
     const int lock_offset = BasicObjectLock::lock_offset_in_bytes ();
+    // BasicLock在BasicObjectLock hou
     const int mark_offset = lock_offset +
                             BasicLock::displaced_header_offset_in_bytes();
 
     Label slow_case;
 
     // Load object pointer into obj_reg %c_rarg3
+    // 从寄存器拿出javaobj 指针到obj_reg
     movptr(obj_reg, Address(lock_reg, obj_offset));
 
+    // 偏向锁, 进入
     if (UseBiasedLocking) {
       biased_locking_enter(lock_reg, obj_reg, swap_reg, rscratch1, false, done, &slow_case);
     }
 
     // Load immediate 1 into swap_reg %rax
+    // 往swap_reg写入1
     movl(swap_reg, 1);
 
     // Load (object->mark() | 1) into swap_reg %rax
+    // 当前swap_reg(1) or markword 到swap_reg-> object->mark() | 1
+    // 加载markword的前63位，最最后1位是1 到swap_reg(就是用来交换的中间寄存器)
     orptr(swap_reg, Address(obj_reg, 0));
 
     // Save (object->mark() | 1) into BasicLock's displaced header
+    // 保存object->mark() | 1 （即就是最后1位是1，其它不变到 BasicLock的displaced header
+    // 可以看到就是BasicLock的mark偏移量开始
+    // movptr是因为markword就是使用ptr
     movptr(Address(lock_reg, mark_offset), swap_reg);
 
     assert(lock_offset == 0,
            "displached header must be first word in BasicObjectLock");
-
+    // 缓存行刷新       
     if (os::is_MP()) lock();
+
+    // 把对象头cas到lock_reg
     cmpxchgptr(lock_reg, Address(obj_reg, 0));
     if (PrintBiasedLockingStatistics) {
       cond_inc32(Assembler::zero,
                  ExternalAddress((address) BiasedLocking::fast_path_entry_count_addr()));
     }
+    // 上面cas 成功，直接完成
     jcc(Assembler::zero, done);
 
     // Test if the oopMark is an obvious stack pointer, i.e.,
@@ -753,14 +770,17 @@ void InterpreterMacroAssembler::lock_object(Register lock_reg) {
     }
     jcc(Assembler::zero, done);
 
+    // slowcase执行
     bind(slow_case);
 
     // Call the runtime routine for slow case
+    // 调用 InterpreterRuntime::monitorenter进入重量
     call_VM(noreg,
             CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter),
             lock_reg);
 
     bind(done);
+    // done就是完成了
   }
 }
 

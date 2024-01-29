@@ -372,6 +372,7 @@ class MetaspaceGC : AllStatic {
   // The current high-water-mark for inducing a GC.
   // When committed memory of all metaspaces reaches this value,
   // a GC is induced and the value is increased. Size is in bytes.
+  // 当前触发gc的水位线，触发后会增长
   static volatile intptr_t _capacity_until_GC;
 
   // For a CMS collection, signal that a concurrent collection should
@@ -408,6 +409,7 @@ class MetaspaceGC : AllStatic {
 
   // Calculate the new high-water mark at which to induce
   // a GC.
+  // 计算新的用于诱发gc的高水位
   static void compute_new_size();
 };
 

@@ -3192,6 +3192,8 @@ void TemplateTable::invokedynamic(int byte_no) {
 
 void TemplateTable::_new() {
   transition(vtos, atos);
+  // 其实得到 InstanceKlass指针开始地址（_pool_holder）的索引，1b为1个索引
+  // 过了2b
   __ get_unsigned_2_byte_index_at_bcp(rdx, 1);
   Label slow_case;
   Label slow_case_no_pop;
@@ -3200,6 +3202,9 @@ void TemplateTable::_new() {
   Label initialize_object;  // including clearing the fields
   Label allocate_shared;
 
+  // 获取常量池与tags
+  // rcx：常量池 constant pool
+  // rax：tags
   __ get_cpool_and_tags(rcx, rax);
 
   // Make sure the class we're about to instantiate has been resolved.
@@ -3207,11 +3212,14 @@ void TemplateTable::_new() {
   // how Constant Pool is updated (see ConstantPool::klass_at_put)
   const int tags_offset = Array<u1>::base_offset_in_bytes();
   __ cmpb(Address(rax, rdx, Address::times_1, tags_offset), JVM_CONSTANT_Class);
-  __ jcc(Assembler::notEqual, slow_case_no_pop);
+  __ jcc(Assembler::notEqual, slow_case_no_pop); // 直接慢速
 
-  // get InstanceKlass
+  // get InstanceKlass 获取InstanceKlass ， 其实就是常量池
+  // rcx：base开始地址 rdx：索引下标， times_ptr：3，代表1个索引的长度（8b） size：就是占用多少b
+  // 其实就是InstanceKlass在常量池开始位置
   __ movptr(rcx, Address(rcx, rdx, Address::times_ptr, sizeof(ConstantPool)));
   __ push(rcx);  // save the contexts of klass for initializing the header
+  // 就是把InstanceKlass的地址推到stack里 
 
   // make sure klass is initialized & doesn't have finalizer
   // make sure klass is fully initialized
@@ -3219,6 +3227,7 @@ void TemplateTable::_new() {
   __ jcc(Assembler::notEqual, slow_case);
 
   // get instance_size in InstanceKlass (scaled to a count of bytes)
+  // rdx：内存布局,InstanceKlass大小
   __ movl(rdx, Address(rcx, Klass::layout_helper_offset()));
   // test to see if it has a finalizer or is malformed in some way
   __ testl(rdx, Klass::_lh_instance_slow_path_bit);
@@ -3230,7 +3239,13 @@ void TemplateTable::_new() {
   // 2) if fail and the object is large allocate in the shared Eden
   // 3) if the above fails (or is not applicable), go to a slow case
   // (creates a new TLAB, etc.)
+  // 上面说
+  // 1. 先使用tlab分配
+  // 2. tlab失败了且对象大的，分配eden
+  // 3. 如果上面都是失败，执行慢速slow case （会创建新的tlab）
 
+  // defNew代是true
+  // 默认false
   const bool allow_shared_alloc =
     Universe::heap()->supports_inline_contig_alloc() && !CMSIncrementalMode;
 
@@ -3239,17 +3254,31 @@ void TemplateTable::_new() {
     __ get_thread(thread);
   }
 
+  // 使用tlab
   if (UseTLAB) {
+    // rax加载线程tlab top地址
+    // 等于本次分配空间的开始地址，后面应该用到rax
     __ movptr(rax, Address(thread, in_bytes(JavaThread::tlab_top_offset())));
-    __ lea(rbx, Address(rax, rdx, Address::times_1));
+    // rax（tlab top）开始的rdx大小（InstanceKlass大小）的-》当前tlab分配InstanceKlass大小后的地址 +1
+    // 加载到rbx
+    __ lea(rbx, Address(rax, rdx, Address::times_1));// lea加载地址
+    // 比较rbx、tlab区域的末尾地址
+    // 即分配后的地址是否在tlab
     __ cmpptr(rbx, Address(thread, in_bytes(JavaThread::tlab_end_offset())));
+
+    // rbx > end , 超过tlab区域，就是tlab失败，进入slow慢速
     __ jcc(Assembler::above, allow_shared_alloc ? allocate_shared : slow_case);
+
+    // 把rbx 的更新到线程的tlab位置，即buffer的_top属性，等于tlab下次分配使用的开始地址
     __ movptr(Address(thread, in_bytes(JavaThread::tlab_top_offset())), rbx);
+    // 默认false
     if (ZeroTLAB) {
       // the fields have been already cleared
       __ jmp(initialize_header);
     } else {
+      // 初始化header、属性
       // initialize both the header and fields
+      // 此时寄存器-》rax：分配到空间的开始地址  rdx：InstanceKlass大小
       __ jmp(initialize_object);
     }
   }
@@ -3257,6 +3286,7 @@ void TemplateTable::_new() {
   // Allocation in the shared Eden, if allowed.
   //
   // rdx: instance size in bytes
+  // 默认false
   if (allow_shared_alloc) {
     __ bind(allocate_shared);
 
@@ -3287,15 +3317,21 @@ void TemplateTable::_new() {
   if (UseTLAB || Universe::heap()->supports_inline_contig_alloc()) {
     // The object is initialized before the header.  If the object size is
     // zero, go directly to the header initialization.
+
+    // initialize_object位置 -》 初始化对象  java对象？
+    // tlab跳转执行
     __ bind(initialize_object);
-    __ decrement(rdx, sizeof(oopDesc));
-    __ jcc(Assembler::zero, initialize_header);
+    // 此时寄存器-》rax：分配到空间的开始地址  rdx：InstanceKlass大小
+    __ decrement(rdx, sizeof(oopDesc)); // InstanceKlass大小 - oopDesc大小
+    __ jcc(Assembler::zero, initialize_header); // rdx=0，就是没空余，执行初始化header
 
     // Initialize topmost object field, divide rdx by 8, check if odd and
     // test if zero.
-    __ xorl(rcx, rcx);    // use zero reg to clear memory (shorter code)
+    // 填充？
+    __ xorl(rcx, rcx);    // use zero reg to clear memory (shorter code)，清理内存
     __ shrl(rdx, LogBytesPerLong); // divide by 2*oopSize and set carry flag if odd
 
+    // 保证rdx上的是8的倍数 -》 填充？
     // rdx must have been multiple of 8
 #ifdef ASSERT
     // make sure rdx was multiple of 8
@@ -3308,25 +3344,45 @@ void TemplateTable::_new() {
 #endif
 
     // initialize remaining object fields: rdx was a multiple of 8
+    // 初始化对象的属性
     { Label loop;
-    __ bind(loop);
+    __ bind(loop);//循环执行
     __ movptr(Address(rax, rdx, Address::times_8, sizeof(oopDesc) - 1*oopSize), rcx);
     NOT_LP64(__ movptr(Address(rax, rdx, Address::times_8, sizeof(oopDesc) - 2*oopSize), rcx));
     __ decrement(rdx);
-    __ jcc(Assembler::notZero, loop);
+    __ jcc(Assembler::notZero, loop);// rdx !=0 , 继续循环
     }
 
     // initialize object header only.
+    // 只初始对象head的开始
     __ bind(initialize_header);
+
+    // tlab中，rax是本次tlab分配到空间的开始地址，等于对象开始地址
+
+    // 其实下面这段就是给对象的markword赋值
+    // 偏向锁
     if (UseBiasedLocking) {
+      // 出栈rcx：InstanceKlass 的地址
       __ pop(rcx);   // get saved klass back in the register.
+      // rbx = InstanceKlass的的原型头地址 （InstanceKlass继承Klass的）
       __ movptr(rbx, Address(rcx, Klass::prototype_header_offset()));
+      // 把Klass的赋值到 对象（rax就是当前对象开始地址）的markword
       __ movptr(Address(rax, oopDesc::mark_offset_in_bytes ()), rbx);
+      
+      // 开启偏向锁：使用InstanceKlass的的原型头作为初始markword
+      // 说明InstanceKlass的的原型头有不一样？
+      // 偏向锁的有个任务会把class的原型头更新成偏向模式（101）
     } else {
+      // markword = 默认000..01 （纯净无锁无hashcode） 
       __ movptr(Address(rax, oopDesc::mark_offset_in_bytes ()),
                 (int32_t)markOopDesc::prototype()); // header
-      __ pop(rcx);   // get saved klass back in the register.
+      __ pop(rcx);   // get saved klass back in the register. 取出InstanceKlass 的地址
+
+      // 没开启偏向锁： markword最原始的无锁形式
     }
+
+    // 保存Klass指针
+    // 把rcx（InstanceKlass）存到rax
     __ store_klass(rax, rcx);  // klass
 
     {
@@ -3338,15 +3394,23 @@ void TemplateTable::_new() {
       __ pop(atos);
     }
 
+    // 已完成分配，结束
     __ jmp(done);
   }
 
   // slow case
+  // 慢速分配开始
   __ bind(slow_case);
+  // 此时rcx是InstanceKlass
   __ pop(rcx);   // restore stack pointer to what it was when we came in.
+  // 具体慢速分配（无pop）
   __ bind(slow_case_no_pop);
+  // 获取常量池
   __ get_constant_pool(rax);
+  // rdx ：等于InstanceKlass的索引
   __ get_unsigned_2_byte_index_at_bcp(rdx, 1);
+  // 调用new
+  // rax：常量池， rdx：InstanceKlass在class常量池的索引
   call_VM(rax, CAST_FROM_FN_PTR(address, InterpreterRuntime::_new), rax, rdx);
 
   // continue
@@ -3532,7 +3596,7 @@ void TemplateTable::athrow() {
 //
 // Stack layout:
 //
-// [expressions  ] <--- rsp               = expression stack top
+// UKexpressions  ] <--- rsp               = expression stack top
 // ..
 // [expressions  ]
 // [monitor entry] <--- monitor block top = expression stack bot
@@ -3542,7 +3606,7 @@ void TemplateTable::athrow() {
 // ...
 // [saved rbp,    ] <--- rbp,
 
-
+// 这是最外层执行字节码，是所有cpu通用执行定义
 void TemplateTable::monitorenter() {
   transition(atos, vtos);
 
@@ -3579,15 +3643,22 @@ void TemplateTable::monitorenter() {
   __ testptr(rdx, rdx);                          // check if a slot has been found
   __ jccb(Assembler::notZero, allocated);        // if found, continue with that one
 
+  // rsp：栈寄存器
+  // rdx：操作数寄存器
+  // rax：存储结果
+  // rcx: 一般循环loop计数
+  
   // allocate one if there's no free slot
   { Label entry, loop;
-    // 1. compute new pointers                   // rsp: old expression stack top
+    // 计算新的指针（s）
+    // 1. compute new pointers                 // rsp: old expression stack top
     __ movptr(rdx, monitor_block_bot);           // rdx: old expression stack bottom
     __ subptr(rsp, entry_size);                  // move expression stack top
     __ subptr(rdx, entry_size);                  // move expression stack bottom
     __ mov(rcx, rsp);                            // set start value for copy loop
     __ movptr(monitor_block_bot, rdx);           // set new monitor block top
     __ jmp(entry);
+    // 移动到指令（expression）到栈的内容
     // 2. move expression stack contents
     __ bind(loop);
     __ movptr(rbx, Address(rcx, entry_size));    // load expression stack word from old location
@@ -3600,13 +3671,22 @@ void TemplateTable::monitorenter() {
 
   // call run-time routine
   // rdx: points to monitor entry
-  __ bind(allocated);
+  __ bind(allocated); // rdx指向 monitorentry
 
   // Increment bcp to point to the next bytecode, so exception handling for async. exceptions work correctly.
   // The object has already been poped from the stack, so the expression stack looks correct.
   __ increment(rsi);
 
+  // 所以锁相关操作：
+  // 1. 申请monitor对象
+  // 2.进行lock_objcect
+
+  // 
+  // 存储java对象指针到rax
+  //    java对象指针通过rdx的BasicObjectLock的obj偏移量来拿到
   __ movptr(Address(rdx, BasicObjectLock::obj_offset_in_bytes()), rax);     // store object
+  // 关键：进行锁操作！！！
+  // 根据不同cpu定义执行
   __ lock_object(rdx);
 
   // check to make sure this monitor doesn't cause stack overflow after locking

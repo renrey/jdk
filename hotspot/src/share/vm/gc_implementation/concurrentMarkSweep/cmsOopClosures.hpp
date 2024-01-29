@@ -291,6 +291,7 @@ class Par_MarkRefsIntoAndScanClosure: public CMSOopsInGenClosure {
 // This closure is used during the concurrent marking phase
 // following the first checkpoint. Its use is buried in
 // the closure MarkFromRootsClosure.
+// 在并发标记阶段执行，跟着第1次safepoint
 class PushOrMarkClosure: public CMSOopClosure {
  private:
   CMSCollector*   _collector;

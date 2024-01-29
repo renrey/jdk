@@ -56,6 +56,7 @@ inline void CMSBitMap::mark(HeapWord* addr) {
   assert_locked();
   assert(_bmStartWord <= addr && addr < (_bmStartWord + _bmWordSize),
          "outside underlying space?");
+  // bitmap标记对应地址标记       
   _bm.set_bit(heapWordToOffset(addr));
 }
 
@@ -229,6 +230,7 @@ inline void CMSBitMap::iterate(BitMapClosure* cl, HeapWord* left,
   assert_locked();
   left = MAX2(_bmStartWord, left);
   right = MIN2(_bmStartWord + _bmWordSize, right);
+  // 对位图中，从left到right执行闭包
   if (right > left) {
     _bm.iterate(cl, heapWordToOffset(left), heapWordToOffset(right));
   }

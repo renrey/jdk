@@ -5671,6 +5671,7 @@ int os::PlatformEvent::park(jlong millis) {
   guarantee (_nParked == 0, "invariant") ;
 
   int v ;
+  // 
   for (;;) {
       v = _Event ;
       if (Atomic::cmpxchg (v-1, &_Event, v) == v) break ;
@@ -5681,8 +5682,10 @@ int os::PlatformEvent::park(jlong millis) {
   // We do this the hard way, by blocking the thread.
   // Consider enforcing a minimum timeout value.
   struct timespec abst;
+  // 计算唤醒准确时间
   compute_abstime(&abst, millis);
 
+  // 默认ret：os超时
   int ret = OS_TIMEOUT;
   int status = pthread_mutex_lock(_mutex);
   assert_status(status == 0, status, "mutex_lock");
@@ -5705,6 +5708,7 @@ int os::PlatformEvent::park(jlong millis) {
   // In that case, we should propagate the notify to another waiter.
 
   while (_Event < 0) {
+    // 等待
     status = os::Linux::safe_cond_timedwait(_cond, _mutex, &abst);
     if (status != 0 && WorkAroundNPTLTimedWaitHang) {
       pthread_cond_destroy (_cond);
@@ -5714,10 +5718,12 @@ int os::PlatformEvent::park(jlong millis) {
                   status == ETIME || status == ETIMEDOUT,
                   status, "cond_timedwait");
     if (!FilterSpuriousWakeups) break ;                 // previous semantics
+    // 超时，终止等待
     if (status == ETIME || status == ETIMEDOUT) break ;
     // We consume and ignore EINTR and spurious wakeups.
   }
   --_nParked ;
+  // 正常状态，返回状态正常
   if (_Event >= 0) {
      ret = OS_OK;
   }

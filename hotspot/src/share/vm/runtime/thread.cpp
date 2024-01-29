@@ -970,6 +970,7 @@ bool Thread::is_in_usable_stack(address adr) const {
 // should be revisited, and they should be removed if possible.
 
 bool Thread::is_lock_owned(address adr) const {
+  // adr: lock对象（BasicLock）的地址
   return on_local_stack(adr);
 }
 
@@ -3458,6 +3459,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
     // Monitors can have spurious returns, must always check another state flag
     {
       MutexLocker ml(Notify_lock);
+      // 启动vm线程
       os::start_thread(vmthread);
       while (vmthread->active_handles() == NULL) {
         Notify_lock->wait();
@@ -3496,6 +3498,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
       create_vm_init_libraries();
     }
 
+    // 初始化class：String
     initialize_class(vmSymbols::java_lang_String(), CHECK_0);
 
     // Initialize java_lang.System (needed before creating the thread)
@@ -3503,15 +3506,19 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
     initialize_class(vmSymbols::java_lang_ThreadGroup(), CHECK_0);
     Handle thread_group = create_initial_thread_group(CHECK_0);
     Universe::set_main_thread_group(thread_group());
+    // 加载Thread类
     initialize_class(vmSymbols::java_lang_Thread(), CHECK_0);
+    // 给main线程创建java 线程对象
     oop thread_object = create_initial_thread(thread_group, main_thread, CHECK_0);
     main_thread->set_threadObj(thread_object);
     // Set thread status to running since main thread has
     // been started and running.
+    // 更新main线程的java对象 状态= Runnable
     java_lang_Thread::set_thread_status(thread_object,
                                         java_lang_Thread::RUNNABLE);
 
     // The VM creates & returns objects of this class. Make sure it's initialized.
+    // 初始化Class类
     initialize_class(vmSymbols::java_lang_Class(), CHECK_0);
 
     // The VM preresolves methods to these classes. Make sure that they get initialized
@@ -3567,6 +3574,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   // Set flag that basic initialization has completed. Used by exceptions and various
   // debug stuff, that does not work until all basic classes have been initialized.
+  // 这里代表init完成
   set_init_completed();
 
 #ifndef USDT2
@@ -3594,10 +3602,13 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // Support for ConcurrentMarkSweep. This should be cleaned up
   // and better encapsulated. The ugly nested if test would go away
   // once things are properly refactored. XXX YSR
+  // gc相关
   if (UseConcMarkSweepGC || UseG1GC) {
+    // 使用CMS
     if (UseConcMarkSweepGC) {
       ConcurrentMarkSweepThread::makeSurrogateLockerThread(THREAD);
     } else {
+      // 使用G1
       ConcurrentMarkThread::makeSurrogateLockerThread(THREAD);
     }
     if (HAS_PENDING_EXCEPTION) {
@@ -3670,7 +3681,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   StatSampler::engage();
   if (CheckJNICalls)                  JniPeriodicChecker::engage();
 
-  BiasedLocking::init();
+  BiasedLocking::init(); // 异步启动偏向锁初始化任务
 
   if (JDK_Version::current().post_vm_init_hook_enabled()) {
     call_postVMInitHook(THREAD);
