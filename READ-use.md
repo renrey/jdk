@@ -97,4 +97,11 @@ ssh-add ~/.ssh/id_ed25519
 chmod 600 ~/.ssh/id_ed25519
 
  echo ~/.ssh/id_ed25519.pub
+
+vi ~/.ssh/config
+->
+
+Host github.com
+ Hostname ssh.github.com
+ Port 443
 ```
