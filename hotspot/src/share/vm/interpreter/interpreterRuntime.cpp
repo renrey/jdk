@@ -956,7 +956,6 @@ IRT_ENTRY(void, InterpreterRuntime::at_safepoint(JavaThread* thread))
   // if this is called during a safepoint
 
   if (JvmtiExport::should_post_single_step()) {
-c
     JvmtiExport::at_single_stepping_point(thread, method(thread), bcp(thread));
   }
 IRT_END

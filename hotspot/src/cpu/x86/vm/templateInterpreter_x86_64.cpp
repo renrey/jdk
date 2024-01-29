@@ -269,13 +269,14 @@ address TemplateInterpreterGenerator::generate_result_handler_for(
 address TemplateInterpreterGenerator::generate_safept_entry_for(
         TosState state,
         address runtime_entry) {
-  address entry = __ p·c();
+  address entry = __ pc();
   __ push(state);
   // runtime_entry等于新的entry
   // 调用runtime_entry的方法（InterpreterRuntime::   ）
   __ call_VM(noreg, runtime_entry);
   // 正常调用原来指令（使用的是vtos，tos非缓存的）
   __ dispatch_via(vtos, Interpreter::_normal_table.table_for(vtos));
+  return entry;
  }
 
 

@@ -44,7 +44,6 @@ class Linux {
   static struct sigaction *(*get_signal_action)(int);
   static struct sigaction *get_preinstalled_handler(int);
   static void save_preinstalled_handler(int, struct sigaction&);
-F
   static void check_signal_handler(int sig);
 
   // For signal flags diagnostics

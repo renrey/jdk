@@ -714,9 +714,9 @@ inline int oopDesc::oop_iterate(OopClosureType* blk) {                     \
                                                                            \
 inline int oopDesc::oop_iterate(OopClosureType* blk, MemRegion mr) {       \
   SpecializationStats::record_call();                                      \
-  // 具体还是执行klass的
-  // oop_oop_iterate##nv_suffix##_m这个都是子类Klass实现的
-  // // 例如InstanceKlass::oop_oop_iterate##nv_suffix##_m
+  /**具体还是执行klass的**/                                                 \
+  /**oop_oop_iterate##nv_suffix##_m这个都是子类Klass实现的    **/           \
+  /** 例如InstanceKlass::oop_oop_iterate##nv_suffix##_m    **/           \
   return klass()->oop_oop_iterate##nv_suffix##_m(this, blk, mr);       \
 }
 // Klass

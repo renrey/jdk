@@ -1507,7 +1507,7 @@ void MacroAssembler::ic_call(address entry) {
 
 // Implementation of call_VM versions
 
-void (Register oop_result,
+void MacroAssembler::call_VM(Register oop_result,
                              address entry_point,
                              bool check_exceptions) {
   Label C, E;

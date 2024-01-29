@@ -154,9 +154,9 @@ class TemplateInterpreter: public AbstractInterpreter {
   // Code generation
 #ifndef PRODUCT
   static address    trace_code    (TosState state)              { return _trace_code.entry(state); }
-#endif // !PRODzUCT
+#endif // !PRODUCT
   static address    continuation  (TosState state)              { return _continuation_entry.entry(state); }
-  static address*   cc(TosState state)              { return _active_table.table_for(state); }
+  static address*   dispatch_table(TosState state)              { return _active_table.table_for(state); }
   static address*   dispatch_table()                            { return _active_table.table_for(); }
   static int        distance_from_dispatch_table(TosState state){ return _active_table.distance_from(state); }
   static address*   normal_table(TosState state)                { return _normal_table.table_for(state); }

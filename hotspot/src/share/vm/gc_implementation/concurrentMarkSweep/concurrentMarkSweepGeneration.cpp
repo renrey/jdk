@@ -1938,7 +1938,7 @@ NOT_PRODUCT(
     report_concurrent_mode_interruption();
   }
 
-  set_did_compact(should_compact);、
+  set_did_compact(should_compact);
   // 执行压缩！！！
   if (should_compact) {
     // If the collection is being acquired from the background
