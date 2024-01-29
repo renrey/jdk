@@ -91,6 +91,7 @@ sudo ln -s /usr/bin/ldd-2.27 /usr/bin/ldd
 https://github.com/settings/keys
 
 ssh-keygen -t ed25519 -C "your_email@example.com"
+eval `ssh-agent -s`
 ssh-add ~/.ssh/id_ed25519
 
 chmod 600 ~/.ssh/id_ed25519
