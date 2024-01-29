@@ -86,3 +86,14 @@ sudo ln -s /usr/local/glibc-2.23/bin/ldd /usr/bin/ldd-2.23
 sudo ln -s /usr/bin/ldd-2.23 /usr/bin/ldd
 sudo ln -s /usr/bin/ldd-2.27 /usr/bin/ldd
 ```
+
+```
+https://github.com/settings/keys
+
+ssh-keygen -t ed25519 -C "your_email@example.com"
+ssh-add ~/.ssh/id_ed25519
+
+chmod 600 ~/.ssh/id_ed25519
+
+ echo ~/.ssh/id_ed25519.pub
+```
