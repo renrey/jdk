@@ -635,11 +635,13 @@ jint universe_init() {
   GC_locker::lock();  // do not allow gc during bootstrapping
   JavaClasses::compute_hard_coded_offsets();
 
+  // 初始化堆！！！
   jint status = Universe::initialize_heap();
   if (status != JNI_OK) {
     return status;
   }
 
+  // Metaspace初始化 
   Metaspace::global_initialize();
 
   // Create memory for metadata.  Must be after initializing heap for
@@ -659,6 +661,7 @@ jint universe_init() {
     // the file is closed. Closing the file does not affect the
     // currently mapped regions.
     MetaspaceShared::initialize_shared_spaces();
+    // 创建stringtable
     StringTable::create_table();
   } else {
     SymbolTable::create_table();
@@ -778,6 +781,8 @@ jint Universe::initialize_heap() {
 
   if (UseParallelGC) {
 #if INCLUDE_ALL_GCS
+    // UseParallelGC 就是使用ps
+    // ps heap:  ParallelScavengeHeap
     Universe::_collectedHeap = new ParallelScavengeHeap();
 #else  // INCLUDE_ALL_GCS
     fatal("UseParallelGC not supported in this VM.");
@@ -785,6 +790,7 @@ jint Universe::initialize_heap() {
 
   } else if (UseG1GC) {
 #if INCLUDE_ALL_GCS
+    // g1: G1CollectorPolicy ，G1CollectedHeap 
     G1CollectorPolicy* g1p = new G1CollectorPolicy();
     g1p->initialize_all();
     G1CollectedHeap* g1h = new G1CollectedHeap(g1p);
@@ -815,9 +821,13 @@ jint Universe::initialize_heap() {
     gc_policy->initialize_all();
 
     // MarkSweepPolicy
+    // cms下使用
     Universe::_collectedHeap = new GenCollectedHeap(gc_policy);
   }
 
+  // 进行对应堆具体初始化
+  // G1CollectedHeap::initialize() 
+  // GenCollectedHeap::initialize() 
   jint status = Universe::heap()->initialize();
   if (status != JNI_OK) {
     return status;

@@ -40,7 +40,7 @@ class ThreadLocalAllocBuffer: public CHeapObj<mtThread> {
   friend class VMStructs;
 private:
   HeapWord* _start;                              // address of TLAB
-  HeapWord* _top;                                // address after last allocation, 上次分配后可用地址头
+  HeapWord* _top;                                // address after last allocation, 上次分配后可用区域的开始地址（即下次分配的开始地址）
   HeapWord* _pf_top;                             // allocation prefetch watermark
   HeapWord* _end;                                // allocation end (excluding alignment_reserve) // 已分配的end
   size_t    _desired_size;                       // desired size   (including alignment_reserve)

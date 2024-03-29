@@ -299,6 +299,7 @@ void TemplateTable::iconst(int value) {
   if (value == 0) {
     __ xorptr(rax, rax);
   } else {
+    // 非0，
     __ movptr(rax, value);
   }
 }
@@ -507,8 +508,9 @@ void TemplateTable::iload() {
   }
 
   // Get the local value into tos
-  locals_index(rbx);
-  __ movl(rax, iaddress(rbx));
+  locals_index(rbx);// 本地变量表index写入到rbx
+  // 移动到操作数栈
+  __ movl(rax, iaddress(rbx));// rax：存放操作数 
 }
 
 
@@ -816,7 +818,8 @@ void TemplateTable::aload_0() {
 
 void TemplateTable::istore() {
   transition(itos, vtos);
-  locals_index(rbx);
+  locals_index(rbx);//rbx即当前最新的index
+  // 把操作数（rax）的push到本地变量表
   __ movl(iaddress(rbx), rax);
 }
 
@@ -1014,7 +1017,8 @@ void TemplateTable::sastore() {
 
 void TemplateTable::istore(int n) {
   transition(itos, vtos);
-  __ movl(iaddress(n), rax);
+  // pop操作数栈，放入到本地变量表index=n的位置
+  __ movl(iaddress(n), rax);// rax：操作数栈地址
 }
 
 
@@ -3606,7 +3610,6 @@ void TemplateTable::athrow() {
 // ...
 // [saved rbp,    ] <--- rbp,
 
-// 这是最外层执行字节码，是所有cpu通用执行定义
 void TemplateTable::monitorenter() {
   transition(atos, vtos);
 

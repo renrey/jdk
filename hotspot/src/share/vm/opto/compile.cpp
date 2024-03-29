@@ -826,6 +826,7 @@ Compile::Compile( ciEnv* ci_env, C2Compiler* compiler, ciMethod* target, int osr
   NOT_PRODUCT( verify_graph_edges(); )
 
   // Now optimize
+  // 执行优化！！！
   Optimize();
   if (failing())  return;
   NOT_PRODUCT( verify_graph_edges(); )
@@ -2028,6 +2029,7 @@ void Compile::Optimize() {
   cleanup_expensive_nodes(igvn);
 
   // Perform escape analysis
+  // 执行逃逸分析
   if (_do_escape_analysis && ConnectionGraph::has_candidates(this)) {
     if (has_loops()) {
       // Cleanup graph (remove dead nodes).
@@ -2036,6 +2038,7 @@ void Compile::Optimize() {
       if (major_progress()) print_method(PHASE_PHASEIDEAL_BEFORE_EA, 2);
       if (failing())  return;
     }
+    // 具体执行分析
     ConnectionGraph::do_analysis(this, &igvn);
 
     if (failing())  return;
@@ -2049,6 +2052,7 @@ void Compile::Optimize() {
     if (congraph() != NULL && macro_count() > 0) {
       NOT_PRODUCT( TracePhase t2("macroEliminate", &_t_macroEliminate, TimeCompiler); )
       PhaseMacroExpand mexp(igvn);
+      // eliminate-》标量替换 
       mexp.eliminate_macro_nodes();
       igvn.set_delay_transform(false);
 

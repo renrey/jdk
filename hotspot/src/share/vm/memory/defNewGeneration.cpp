@@ -535,6 +535,8 @@ HeapWord* DefNewGeneration::allocate_from_space(size_t size) {
          Thread::current()->is_VM_thread())) {
       // If the Heap_lock is not locked by this thread, this will be called
       // again later with the Heap_lock held.
+
+      // 串行申请from空间
       result = from()->allocate(size);
     } else if (PrintGC && Verbose) {
       gclog_or_tty->print_cr("  Heap_lock is not owned by self");
@@ -1077,6 +1079,8 @@ HeapWord* DefNewGeneration::allocate(size_t word_size,
   // We try to allocate from the eden.  If that works, we are happy.
   // Note that since DefNewGeneration supports lock-free allocation, we
   // have to use it here, as well.
+
+  // 1. 还是使用cas 对eden申请
   HeapWord* result = eden()->par_allocate(word_size);
   if (result != NULL) {
     if (CMSEdenChunksRecordAlways && _next_gen != NULL) {
@@ -1084,33 +1088,38 @@ HeapWord* DefNewGeneration::allocate(size_t word_size,
     }
     return result;
   }
+      // 2. eden 申请失败-》空间不够
   do {
+
     HeapWord* old_limit = eden()->soft_end();
     if (old_limit < eden()->end()) {
       // Tell the next generation we reached a limit.
       HeapWord* new_limit =
         next_gen()->allocation_limit_reached(eden(), eden()->top(), word_size);
       if (new_limit != NULL) {
+        // 更新界限
         Atomic::cmpxchg_ptr(new_limit, eden()->soft_end_addr(), old_limit);
       } else {
         assert(eden()->soft_end() == eden()->end(),
                "invalid state after allocation_limit_reached returned null");
       }
     } else {
+      // 达到eden结尾，终止
       // The allocation failed and the soft limit is equal to the hard limit,
       // there are no reasons to do an attempt to allocate
       assert(old_limit == eden()->end(), "sanity check");
       break;
     }
     // Try to allocate until succeeded or the soft limit can't be adjusted
-    result = eden()->par_allocate(word_size);
+    result = eden()->par_allocate(word_size);// 继续申请eden
   } while (result == NULL);
 
   // If the eden is full and the last collection bailed out, we are running
   // out of heap space, and we try to allocate the from-space, too.
   // allocate_from_space can't be inlined because that would introduce a
-  // circular dependency at compile time.
+  // circular dependency at compile time.  
   if (result == NULL) {
+    // 最后还是没在eden申请成功，进行from 空间申请
     result = allocate_from_space(word_size);
   } else if (CMSEdenChunksRecordAlways && _next_gen != NULL) {
     _next_gen->sample_eden_chunk();
@@ -1118,8 +1127,10 @@ HeapWord* DefNewGeneration::allocate(size_t word_size,
   return result;
 }
 
+// 并行分配，无锁
 HeapWord* DefNewGeneration::par_allocate(size_t word_size,
                                          bool is_tlab) {
+  // 先从eden分配
   HeapWord* res = eden()->par_allocate(word_size);
   if (CMSEdenChunksRecordAlways && _next_gen != NULL) {
     _next_gen->sample_eden_chunk();

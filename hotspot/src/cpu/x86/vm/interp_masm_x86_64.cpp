@@ -686,6 +686,7 @@ void InterpreterMacroAssembler::remove_activation(
 //      c_rarg0, c_rarg1, c_rarg2, c_rarg3, .. (param regs)
 //      rscratch1, rscratch2 (scratch regs)
 void InterpreterMacroAssembler::lock_object(Register lock_reg) {
+  // 就是直接底层汇编快速lock
   assert(lock_reg == c_rarg1, "The argument is only for looks. It must be c_rarg1");
   
   // 配置上直接要求UseHeavyMonitors（重量级锁）
@@ -774,7 +775,8 @@ void InterpreterMacroAssembler::lock_object(Register lock_reg) {
     bind(slow_case);
 
     // Call the runtime routine for slow case
-    // 调用 InterpreterRuntime::monitorenter进入重量
+    // 调用 InterpreterRuntime::monitorenter进入慢速
+    // 因为非基础汇编的
     call_VM(noreg,
             CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter),
             lock_reg);

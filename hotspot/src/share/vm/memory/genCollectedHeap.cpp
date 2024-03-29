@@ -328,6 +328,7 @@ HeapWord* GenCollectedHeap::attempt_allocation(size_t size,
                                                bool first_only) {
   HeapWord* res;
   for (int i = 0; i < _n_gens; i++) {
+    // 每个代都尝试申请
     if (_gens[i]->should_allocate(size, is_tlab)) {
       res = _gens[i]->allocate(size, is_tlab);
       if (res != NULL) return res;
@@ -340,6 +341,7 @@ HeapWord* GenCollectedHeap::attempt_allocation(size_t size,
 
 HeapWord* GenCollectedHeap::mem_allocate(size_t size,
                                          bool* gc_overhead_limit_was_exceeded) {
+  // 共享堆中申请空间                                          
   return collector_policy()->mem_allocate_work(size,
                                                false /* is_tlab */,
                                                gc_overhead_limit_was_exceeded);

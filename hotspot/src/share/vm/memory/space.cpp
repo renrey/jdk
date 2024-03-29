@@ -847,6 +847,7 @@ inline HeapWord* ContiguousSpace::allocate_impl(size_t size,
   HeapWord* obj = top();
   if (pointer_delta(end_value, obj) >= size) {
     HeapWord* new_top = obj + size;
+    // 假设无并发，直接更新top
     set_top(new_top);
     assert(is_aligned(obj) && is_aligned(new_top), "checking alignment");
     return obj;
@@ -860,8 +861,13 @@ inline HeapWord* ContiguousSpace::par_allocate_impl(size_t size,
                                                     HeapWord* const end_value) {
   do {
     HeapWord* obj = top();
+    // 剩余空间足够
     if (pointer_delta(end_value, obj) >= size) {
+      // 指针碰撞，分配
+
+      // 新top
       HeapWord* new_top = obj + size;
+      // cas 更新top
       HeapWord* result = (HeapWord*)Atomic::cmpxchg_ptr(new_top, top_addr(), obj);
       // result can be one of two:
       //  the old top value: the exchange succeeded
@@ -871,6 +877,7 @@ inline HeapWord* ContiguousSpace::par_allocate_impl(size_t size,
         return obj;
       }
     } else {
+      // 只有空间不足，才会返回失败
       return NULL;
     }
   } while (true);

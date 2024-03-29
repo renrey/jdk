@@ -115,6 +115,7 @@ void AbstractInterpreter::print() {
 
 
 void interpreter_init() {
+  // 初始化解释器
   Interpreter::initialize();
 #ifndef PRODUCT
   if (TraceBytecodes) BytecodeTracer::set_closure(BytecodeTracer::std_closure());

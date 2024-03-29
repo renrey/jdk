@@ -1,0 +1,18 @@
+{
+      "git.ignoreLimitWarning": true,
+      "files.exclude": {
+            "build": true,
+            "common": true,
+            "corba": true,
+            "hotspot/agent": true,
+            "hotspot/make": true,
+            "hotspot/test": true,
+            "jaxp": true,
+            "jaxws": true,
+            "jdk": true,
+            "langtools": true,
+            "make": true,
+            "nashorn": true,
+            "test": true
+      }
+}

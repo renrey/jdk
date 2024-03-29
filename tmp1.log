@@ -1,0 +1,716 @@
+Building OpenJDK for target 'default' in configuration 'linux-x86_64-normal-server-slowdebug'
+
+## Starting langtools
+Compiling 2 files for BUILD_TOOLS
+Compiling 31 properties into resource bundles
+Compiling 777 files for BUILD_BOOTSTRAP_LANGTOOLS
+Creating langtools/dist/bootstrap/lib/javac.jar
+Updating langtools/dist/lib/src.zip
+Compiling 780 files for BUILD_FULL_JAVAC
+Creating langtools/dist/lib/classes.jar
+## Finished langtools (build time 00:00:23)
+
+## Starting hotspot
+Warning: The jvmg target has been replaced with debug
+Warning: Please update your usage
+Creating Makefile ...
+Creating directory list ../shared_dirs.lst
+Creating flags.make ...
+Creating flags_vm.make ...
+Creating vm.make ...
+Creating adlc.make ...
+Creating jvmti.make ...
+Creating trace.make ...
+Creating sa.make ...
+Creating Makefile ...
+Creating flags.make ...
+Creating flags_vm.make ...
+Creating vm.make ...
+Creating adlc.make ...
+Creating jvmti.make ...
+Creating trace.make ...
+Creating sa.make ...
+Creating Makefile ...
+Creating flags.make ...
+Creating flags_vm.make ...
+Creating vm.make ...
+Creating adlc.make ...
+Creating jvmti.make ...
+Creating trace.make ...
+Creating sa.make ...
+Creating Makefile ...
+Creating flags.make ...
+Creating flags_vm.make ...
+Creating vm.make ...
+Creating adlc.make ...
+Creating jvmti.make ...
+Creating trace.make ...
+Creating sa.make ...
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/adlc/archDesc.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/adlc/adlparse.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/adlc/arena.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/adlc/dfa.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/adlc/dict2.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/adlc/filebuff.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/adlc/forms.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/adlc/formsopt.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/adlc/formssel.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/adlc/main.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/opcodes.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/adlc/output_c.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/adlc/output_h.cpp
+Making adlc
+Generating /home/rey/doc/code/jdk-8-hotspot/build/linux-x86_64-normal-server-slowdebug/hotspot/linux_amd64_compiler2/debug/../generated/jvmtifiles/jvmtiEnv.hpp
+Generating /home/rey/doc/code/jdk-8-hotspot/build/linux-x86_64-normal-server-slowdebug/hotspot/linux_amd64_compiler2/debug/../generated/jvmtifiles/jvmtiEnter.cpp
+Generating /home/rey/doc/code/jdk-8-hotspot/build/linux-x86_64-normal-server-slowdebug/hotspot/linux_amd64_compiler2/debug/../generated/jvmtifiles/jvmtiEnterTrace.cpp
+Generating /home/rey/doc/code/jdk-8-hotspot/build/linux-x86_64-normal-server-slowdebug/hotspot/linux_amd64_compiler2/debug/../generated/jvmtifiles/bytecodeInterpreterWithChecks.cpp
+Generating /home/rey/doc/code/jdk-8-hotspot/build/linux-x86_64-normal-server-slowdebug/hotspot/linux_amd64_compiler2/debug/../generated/jvmtifiles/jvmti.h
+Generating /home/rey/doc/code/jdk-8-hotspot/build/linux-x86_64-normal-server-slowdebug/hotspot/linux_amd64_compiler2/debug/../generated/jvmtifiles/jvmtiEnvRecommended.cpp
+Generating /home/rey/doc/code/jdk-8-hotspot/build/linux-x86_64-normal-server-slowdebug/hotspot/linux_amd64_compiler2/debug/../generated/tracefiles/traceEventClasses.hpp
+Generating /home/rey/doc/code/jdk-8-hotspot/build/linux-x86_64-normal-server-slowdebug/hotspot/linux_amd64_compiler2/debug/../generated/tracefiles/traceEventIds.hpp
+Generating /home/rey/doc/code/jdk-8-hotspot/build/linux-x86_64-normal-server-slowdebug/hotspot/linux_amd64_compiler2/debug/../generated/tracefiles/traceTypes.hpp
+Making /home/rey/doc/code/jdk-8-hotspot/build/linux-x86_64-normal-server-slowdebug/hotspot/linux_amd64_compiler2/debug/../generated/sa-jdi.jar
+Generating precompiled header precompiled.hpp.gch
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/compiler/abstractCompiler.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/accessFlags.cpp
+Compiling ../generated/adfiles/ad_x86_64.cpp
+Compiling ../generated/adfiles/ad_x86_64_clone.cpp
+Compiling ../generated/adfiles/ad_x86_64_expand.cpp
+Compiling ../generated/adfiles/ad_x86_64_format.cpp
+Compiling ../generated/adfiles/ad_x86_64_gen.cpp
+Compiling ../generated/adfiles/ad_x86_64_misc.cpp
+Compiling ../generated/adfiles/ad_x86_64_peephole.cpp
+Compiling ../generated/adfiles/ad_x86_64_pipeline.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/concurrentMarkSweep/adaptiveFreeList.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/adaptiveSizePolicy.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/addnode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/adjoiningGenerations.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/adjoiningVirtualSpaces.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/advancedThresholdPolicy.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/ageTable.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_interface/allocTracer.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/allocation.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/allocationStats.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/altHashing.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/annotations.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/arguments.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/array.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/arrayKlass.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/arrayOop.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/asPSOldGen.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/asPSYoungGen.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parNew/asParNewGeneration.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/asm/assembler.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os_cpu/linux_x86/vm/assembler_linux_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/assembler_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/atomic.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/attachListener.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os/linux/vm/attachListener_linux.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/barrierSet.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/basicLock.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/bcEscapeAnalyzer.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/biasedLocking.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/binaryTreeDictionary.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/bitMap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/block.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/blockOffsetTable.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/buildOopMap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/bytecode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/bytecodeAssembler.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/bytecodeHistogram.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/bytecodeInfo.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/bytecodeInterpreter.cpp
+Compiling ../generated/jvmtifiles/bytecodeInterpreterWithChecks.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/bytecodeInterpreter_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/bytecodeStream.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/bytecodeTracer.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/bytecodes.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/bytecodes_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_CFGPrinter.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_Canonicalizer.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/c1_CodeStubs_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_Compilation.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_Compiler.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_Defs.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/c1_FpuStackSim_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_FrameMap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/c1_FrameMap_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_GraphBuilder.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_IR.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_Instruction.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_InstructionPrinter.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_LIR.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_LIRAssembler.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/c1_LIRAssembler_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_LIRGenerator.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/c1_LIRGenerator_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_LinearScan.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/c1_LinearScan_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/c1_MacroAssembler_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_Optimizer.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_RangeCheckElimination.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_Runtime1.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/c1_Runtime1_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_ValueMap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_ValueSet.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_ValueStack.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_ValueType.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/c1/c1_globals.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/c2_globals.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/c2_init_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/c2compiler.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/cSpaceCounters.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/callGenerator.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/callnode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/cardTableExtension.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/cardTableModRefBS.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/cardTableRS.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/cfgnode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/chaitin.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciArray.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciArrayKlass.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciBaseObject.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciCallSite.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciConstant.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciConstantPoolCache.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciEnv.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciExceptionHandler.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciField.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciFlags.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciInstance.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciInstanceKlass.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciKlass.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciMemberName.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciMetadata.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciMethod.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciMethodBlocks.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciMethodData.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciMethodHandle.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciNullObject.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciObjArray.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciObjArrayKlass.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciObject.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciObjectFactory.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciReplay.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciSignature.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciStreams.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciSymbol.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciType.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciTypeArray.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciTypeArrayKlass.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciTypeFlow.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/ci/ciUtilities.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/classFileError.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/classFileParser.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/classFileStream.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/classLoader.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/classLoaderData.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/classLoadingService.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/classes.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/concurrentMarkSweep/cmsAdaptiveSizePolicy.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/concurrentMarkSweep/cmsCollectorPolicy.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/concurrentMarkSweep/cmsGCAdaptivePolicyCounters.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/concurrentMarkSweep/cmsLockVerifier.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/coalesce.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/codeBlob.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/asm/codeBuffer.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/codeCache.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_interface/collectedHeap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/collectionSetChooser.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/collectorCounters.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/collectorPolicy.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/concurrentMarkSweep/compactibleFreeListSpace.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/compilationPolicy.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/compile.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/compiler/compileBroker.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/compiler/compileLog.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/compiledIC.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/compiledICHolder.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/compiledIC_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/compiler/compilerOracle.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/compressedStream.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/concurrentG1Refine.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/concurrentG1RefineThread.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/concurrentGCThread.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/concurrentMark.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/concurrentMarkSweep/concurrentMarkSweepGeneration.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/concurrentMarkSweep/concurrentMarkSweepThread.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/concurrentMarkThread.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/connode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/constMethod.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/constantPool.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/constantTag.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/copy.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/cpCache.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/cppInterpreter.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/cppInterpreter_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/debug.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/debugInfo.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/debugInfoRec.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/debug_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/decoder.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/decoder_elf.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os/linux/vm/decoder_linux.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/defNewGeneration.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/defaultMethods.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/deoptimization.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/depChecker_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/dependencies.cpp
+Compiling ../generated/adfiles/dfa_x86_64.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/diagnosticArgument.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/diagnosticCommand.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/diagnosticFramework.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/libadt/dict.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/dictionary.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/dirtyCardQueue.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/compiler/disassembler.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/divnode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/doCall.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/domgraph.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/dtraceAttacher.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/dtraceJSDT.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os/linux/vm/dtraceJSDT_linux.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/elfFile.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/elfStringTable.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/elfSymbolTable.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/errorReporter.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/escape.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/events.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/evmCompat.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/exceptionHandlerTable.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/exceptions.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/fieldDescriptor.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/fieldType.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/filemap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/forte.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/fprofiler.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/frame.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/frame_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/freeBlockDictionary.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/concurrentMarkSweep/freeChunk.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/freeList.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1AllocRegion.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1BiasedArray.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1BlockOffsetTable.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1CardCounts.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1CollectedHeap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1CollectorPolicy.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1ErgoVerbose.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1GCPhaseTimes.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1HRPrinter.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1HotCardCache.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1Log.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1MMUTracker.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1MarkSweep.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/g1MemoryPool.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1MonitoringSupport.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1RemSet.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1RemSetSummary.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1SATBCardTableModRefBS.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/g1_globals.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/gSpaceCounters.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/gcAdaptivePolicyCounters.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_interface/gcCause.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/gcLocker.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/gcNotifier.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/gcPolicyCounters.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/gcStats.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/gcTaskManager.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/gcTaskThread.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/gcTimer.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/gcTrace.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/gcTraceSend.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/gcTraceTime.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/gcUtil.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/gcm.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/genCollectedHeap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/genMarkSweep.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/genRemSet.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/generateOopMap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/generateOptoStub.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/generation.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/generationCounters.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/generationSizer.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/generationSpec.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/globalDefinitions.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/globals.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/graphKit.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/growableArray.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/hSpaceCounters.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/handles.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/hashtable.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/heap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/heapDumper.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/heapInspection.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/heapRegion.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/heapRegionRemSet.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/heapRegionSeq.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/heapRegionSet.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/heapRegionSets.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/histogram.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/icBuffer.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/icBuffer_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/icache.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/icache_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/idealGraphPrinter.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/idealKit.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/ifg.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/ifnode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/immutableSpace.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/indexSet.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/init.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/instanceClassLoaderKlass.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/instanceKlass.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/instanceMirrorKlass.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/instanceOop.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/instanceRefKlass.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/intHisto.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/interfaceSupport.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/interp_masm_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/interp_masm_x86_64.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/interpreter.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/interpreterRT_x86_64.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/interpreterRuntime.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/interpreter_x86_64.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/invocationCounter.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/iterator.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/java.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/javaAssertions.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/javaCalls.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/javaClasses.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jni.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jniCheck.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jniFastGetField.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/jniFastGetField_x86_64.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/jniHandles.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/jniPeriodicChecker.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvm.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os/linux/vm/jvm_linux.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiClassFileReconstituter.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiCodeBlobEvents.cpp
+Compiling ../generated/jvmtifiles/jvmtiEnter.cpp
+Compiling ../generated/jvmtifiles/jvmtiEnterTrace.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiEnv.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiEnvBase.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiEnvThreadState.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiEventController.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiExport.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiExtensions.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiGetLoadedClasses.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiImpl.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiManageCapabilities.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiRawMonitor.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiRedefineClasses.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiTagMap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiThreadState.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiTrace.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/jvmtiUtil.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/klass.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/klassVtable.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/lcm.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/library_call.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/linkResolver.cpp
+Assembling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os_cpu/linux_x86/vm/linux_x86_64.s
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/live.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/loaderConstraints.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/location.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/locknode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/loopPredicate.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/loopTransform.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/loopUnswitch.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/loopnode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/loopopts.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/lowMemoryDetector.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/machnode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/macro.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/macroAssembler_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/management.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/markOop.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/markSweep.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/matcher.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/mathexactnode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/memBaseline.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/memPtr.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/memRecorder.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/memRegion.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/memReporter.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/memSnapshot.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/memTrackWorker.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/memTracker.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/memnode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/memoryManager.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/memoryPool.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/memoryService.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/memprofiler.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/metachunk.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/metadata.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/metadataOnStackMark.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/metaspace.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/metaspaceCounters.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/metaspaceShared.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/metaspaceShared_x86_64.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/method.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/methodComparator.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/methodCounters.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/methodData.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/methodHandles.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/methodHandles_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/compiler/methodLiveness.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/monitorChunk.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/mulnode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/multnode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/mutableNUMASpace.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/mutableSpace.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/mutex.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/mutexLocker.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os/linux/vm/mutex_linux.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/nativeInst_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/nativeLookup.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/nmethod.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/nmtDCmd.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/node.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/numberSeq.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/objArrayKlass.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/objArrayOop.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/objectCountEventSender.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/objectMonitor.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/objectStartArray.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/oop.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/oopFactory.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/compiler/oopMap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/oopMapCache.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/oopRecorder.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/oopsHierarchy.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/opcodes.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/orderAccess.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/os.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/osThread.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os/linux/vm/osThread_linux.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os/linux/vm/os_linux.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os_cpu/linux_x86/vm/os_linux_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os/posix/vm/os_posix.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/ostream.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/output.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parNew/parCardTableModRefBS.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/parGCAllocBuffer.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/parMarkBitMap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parNew/parNewGeneration.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/parallelScavengeHeap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/park.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/parse1.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/parse2.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/parse3.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/parseHelper.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/wbtestmethods/parserTests.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/pcDesc.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/pcTasks.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/perf.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/perfData.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/perfMemory.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os/linux/vm/perfMemory_linux.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/phase.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/phaseX.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/placeholders.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/libadt/port.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/postaloc.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/preserveException.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/privilegedStack.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/concurrentMarkSweep/promotionInfo.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/psAdaptiveSizePolicy.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/psCompactionManager.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/psGCAdaptivePolicyCounters.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/psGenerationCounters.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/psMarkSweep.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/psMarkSweepDecorator.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/psMemoryPool.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/psOldGen.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/psParallelCompact.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/psPromotionLAB.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/psPromotionManager.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/psScavenge.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/psTasks.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/psVirtualspace.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/psYoungGen.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/ptrQueue.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/quickSort.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/referencePolicy.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/referenceProcessor.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/reflection.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/reflectionUtils.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/reg_split.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/regalloc.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/asm/register.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/register_definitions_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/register_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/regmask.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/relocInfo.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/relocInfo_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/relocator.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/resolutionErrors.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/resourceArea.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/rewriter.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/rframe.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/rootnode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/runtime.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/runtimeService.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/runtime_x86_64.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/safepoint.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/satbQueue.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/scopeDesc.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/serviceThread.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/libadt/set.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/sharedHeap.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/sharedRuntime.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/sharedRuntimeTrans.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/sharedRuntimeTrig.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/sharedRuntime_x86_64.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/signature.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/simpleThresholdPolicy.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/sizes.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/space.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/spaceCounters.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/spaceDecorator.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/sparsePRT.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/specialized_oop_closures.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/split_if.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/stackMapFrame.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/stackMapTable.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/stackValue.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/stackValueCollection.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/statSampler.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/stringopts.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/stubCodeGenerator.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/stubGenerator_x86_64.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/stubRoutines.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os/linux/vm/stubRoutines_linux.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/stubRoutines_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/stubRoutines_x86_64.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/stubs.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/subnode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/superword.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/survRateGroup.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/sweeper.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/symbol.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/symbolTable.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/synchronizer.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/systemDictionary.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/task.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/taskqueue.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/templateInterpreter.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/templateInterpreter_x86_64.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/interpreter/templateTable.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/templateTable_x86_64.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/tenuredGeneration.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/thread.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os/linux/vm/threadCritical_linux.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os_cpu/linux_x86/vm/threadLS_linux_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/threadLocalAllocBuffer.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/threadLocalStorage.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/services/threadService.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os_cpu/linux_x86/vm/thread_linux_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/ticks.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/timer.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/type.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/typeArrayKlass.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/oops/typeArrayOop.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/unhandledOops.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/memory/universe.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/unsafe.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/utf8.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/opto/vectornode.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/libadt/vectset.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/verificationType.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/verifier.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/vframe.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/vframeArray.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/vframe_hp.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/virtualspace.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/concurrentMarkSweep/vmCMSOperations.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/vmError.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os/linux/vm/vmError_linux.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/shared/vmGCOperations.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/parallelScavenge/vmPSOperations.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/vmStructs.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/classfile/vmSymbols.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/vmThread.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/vm_operations.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/gc_implementation/g1/vm_operations_g1.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/os_cpu/linux_x86/vm/vm_version_linux_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/vm_version_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/vmreg.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/vmreg_x86.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/code/vtableStubs.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/cpu/x86/vm/vtableStubs_x86_64.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/prims/whitebox.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/workgroup.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/xmlstream.cpp
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/utilities/yieldingWorkgroup.cpp
+Making signal interposition lib...
+Making SA debugger back-end...
+**NOTICE** Dtrace support disabled: /usr/include/sys/sdt.h not found
+Compiling /home/rey/doc/code/jdk-8-hotspot/hotspot/src/share/vm/runtime/vm_version.cpp
+Linking vm...
+All done.
+Generating linux_amd64_docs/jvmti.html
+## Finished hotspot (build time 00:01:48)
+
+## Starting corba
+Compiling 6 files for BUILD_LOGUTIL
+Creating corba/btjars/logutil.jar
+Compiling 141 files for BUILD_IDLJ
+Creating corba/btjars/idlj.jar
+Compiling 1 files for BUILD_STRIPPROP
+Updating corba/dist/lib/src.zip
+Compiling 1494 files for BUILD_BOOTSTRAP_CORBA
+Compiling 1494 files for BUILD_CORBA
+Creating corba/btjars/stripproperties.jar
+Creating corba/btjars/btcorba.jar
+Creating corba/dist/lib/classes.jar
+Creating bin.zip
+## Finished corba (build time 00:00:17)
+
+## Starting jaxp
+Compiling 1887 files for BUILD_JAXP
+Updating jaxp/dist/lib/src.zip
+Creating jaxp/dist/lib/classes.jar
+## Finished jaxp (build time 00:00:11)
+
+## Starting jaxws
+Compiling 24 files for BUILD_JAF
+Compiling 2948 files for BUILD_JAXWS
+Updating jaxws/dist/lib/src.zip
+Creating jaxws/dist/lib/classes.jar
+## Finished jaxws (build time 00:00:16)
+
+## Starting jdk
+Importing CORBA src.zip
+Importing CORBA bin.zip
+Importing CORBA classes.jar
+Importing JAXP src.zip
+Importing JAXP classes.jar
+Importing JAXWS src.zip
+Importing JAXWS classes.jar
+Importing LANGTOOLS src.zip
+Importing LANGTOOLS classes.jar
+Generating charsetmapping classes
+Generating buffer classes
+Compiling 162 files for BUILD_TOOLS
+Generating exceptions classes
+Generating icon classes
+Compiling 522 properties into resource bundles
+Copying and cleaning 53 properties
+Creating sun/util/LocaleDataMetaInfo.java from 422 found resources.
+Generating sun/misc/Version.java
+Generating sun/misc/Version.java compact1
+Generating sun/misc/Version.java compact2
+Generating sun/misc/Version.java compact3
+Generating X11 wrapper (64-bit version)
+Generating beaninfo
+Generating Nimbus source files
+Verifying /home/rey/doc/code/jdk-8-hotspot/build/linux-x86_64-normal-server-slowdebug/jdk/gensrc_x11wrappers/sizes.64.verification.tmp to /home/rey/doc/code/jdk-8-hotspot/build/linux-x86_64-normal-server-slowdebug/jdk/gensrc_x11wrappers/sizes.64
+Generating HTML DTD file
+Compiling 4 files for BUILD_BREAKITERATOR
+Compiling 9417 files for BUILD_JDK
+CompileJavaClasses.gmk:316: recipe for target '/home/rey/doc/code/jdk-8-hotspot/build/linux-x86_64-normal-server-slowdebug/jdk/classes/_the.BUILD_JDK_batch' failed
+BuildJdk.gmk:64: recipe for target 'classes-only' failed
+/home/rey/doc/code/jdk-8-hotspot//make/Main.gmk:115: recipe for target 'jdk-only' failed

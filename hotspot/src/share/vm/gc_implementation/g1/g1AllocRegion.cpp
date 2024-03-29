@@ -105,22 +105,26 @@ void G1AllocRegion::retire(bool fill_up) {
     size_t allocated_bytes = alloc_region->used() - _used_bytes_before;
     retire_region(alloc_region, allocated_bytes);
     _used_bytes_before = 0;
+    // 更新指针到新的region
     _alloc_region = _dummy_region;
   }
   trace("retired");
 }
 
+// 新建1个当前用于分配的region，且进行分配
 HeapWord* G1AllocRegion::new_alloc_region_and_allocate(size_t word_size,
                                                        bool force) {
   assert(_alloc_region == _dummy_region, ar_ext_msg(this, "pre-condition"));
   assert(_used_bytes_before == 0, ar_ext_msg(this, "pre-condition"));
 
   trace("attempting region allocation");
+  // 申请新的region空间
   HeapRegion* new_alloc_region = allocate_new_region(word_size, force);
   if (new_alloc_region != NULL) {
     new_alloc_region->reset_pre_dummy_top();
     // Need to do this before the allocation
     _used_bytes_before = new_alloc_region->used();
+    // 分配对象空间
     HeapWord* result = allocate(new_alloc_region, word_size, _bot_updates);
     assert(result != NULL, ar_ext_msg(this, "the allocation should succeeded"));
 
@@ -128,6 +132,7 @@ HeapWord* G1AllocRegion::new_alloc_region_and_allocate(size_t word_size,
     // Note that we first perform the allocation and then we store the
     // region in _alloc_region. This is the reason why an active region
     // can never be empty.
+
     _alloc_region = new_alloc_region;
     _count += 1;
     trace("region allocation successful");

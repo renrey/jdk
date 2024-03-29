@@ -1642,6 +1642,7 @@ void TemplateTable::branch(bool is_jsr, bool is_wide) {
     __ jcc(Assembler::zero, dispatch);
     __ bind(has_counters);
 
+    // 分层编译
     if (TieredCompilation) {
       Label no_mdo;
       int increment = InvocationCounter::count_increment;
@@ -1712,6 +1713,8 @@ void TemplateTable::branch(bool is_jsr, bool is_wide) {
         }
       }
     }
+
+    // 
     __ bind(dispatch);
   }
 
@@ -3264,35 +3267,43 @@ void TemplateTable::_new() {
           JVM_CONSTANT_Class);
   __ jcc(Assembler::notEqual, slow_case);
 
-  // get InstanceKlass
+  // get InstanceKlass -> 获取InstanceKlass
   __ movptr(rsi, Address(rsi, rdx,
             Address::times_8, sizeof(ConstantPool)));
 
   // make sure klass is initialized & doesn't have finalizer
   // make sure klass is fully initialized
+  // 1. klass必须完全初始化
   __ cmpb(Address(rsi,
                   InstanceKlass::init_state_offset()),
           InstanceKlass::fully_initialized);
-  __ jcc(Assembler::notEqual, slow_case);
+  __ jcc(Assembler::notEqual, slow_case);// 未达标直接慢速
 
+
+  // 2. 从InstanceKlass获取对象大小
   // get instance_size in InstanceKlass (scaled to a count of bytes)
   __ movl(rdx,
           Address(rsi,
                   Klass::layout_helper_offset()));
   // test to see if it has a finalizer or is malformed in some way
   __ testl(rdx, Klass::_lh_instance_slow_path_bit);
-  __ jcc(Assembler::notZero, slow_case);
+  __ jcc(Assembler::notZero, slow_case);// 有finalizer，慢速
 
   // Allocate the instance
   // 1) Try to allocate in the TLAB
   // 2) if fail and the object is large allocate in the shared Eden
   // 3) if the above fails (or is not applicable), go to a slow case
   // (creates a new TLAB, etc.)
+// 分配对象过程：
+// 1. 尝试在tlab分配
+// 2. 失败后，
 
   const bool allow_shared_alloc =
     Universe::heap()->supports_inline_contig_alloc() && !CMSIncrementalMode;
 
+// tlab执行
   if (UseTLAB) {
+    // 
     __ movptr(rax, Address(r15_thread, in_bytes(JavaThread::tlab_top_offset())));
     __ lea(rbx, Address(rax, rdx, Address::times_1));
     __ cmpptr(rbx, Address(r15_thread, in_bytes(JavaThread::tlab_end_offset())));
@@ -3303,13 +3314,14 @@ void TemplateTable::_new() {
       __ jmp(initialize_header);
     } else {
       // initialize both the header and fields
+      //初始化对象（header、fields）
       __ jmp(initialize_object);
     }
   }
 
   // Allocation in the shared Eden, if allowed.
-  //
-  // rdx: instance size in bytes
+  // 分配在共享的eden
+  // rdx: instance size in bytes 对象大小
   if (allow_shared_alloc) {
     __ bind(allocate_shared);
 
@@ -3348,14 +3360,17 @@ void TemplateTable::_new() {
     __ incr_allocated_bytes(r15_thread, rdx, 0);
   }
 
+// tlab
   if (UseTLAB || Universe::heap()->supports_inline_contig_alloc()) {
     // The object is initialized before the header.  If the object size is
     // zero, go directly to the header initialization.
+    // 初始化对象操作
     __ bind(initialize_object);
     __ decrementl(rdx, sizeof(oopDesc));
     __ jcc(Assembler::zero, initialize_header);
 
     // Initialize object fields
+    // 初始化对象的属性
     __ xorl(rcx, rcx); // use zero reg to clear memory (shorter code)
     __ shrl(rdx, LogBytesPerLong);  // divide by oopSize to simplify the loop
     {
@@ -3369,8 +3384,10 @@ void TemplateTable::_new() {
     }
 
     // initialize object header only.
+    // 只初始化header
     __ bind(initialize_header);
-    if (UseBiasedLocking) {
+    if (UseBiasedLocking) {// 开启偏向锁
+      // 需要原型头
       __ movptr(rscratch1, Address(rsi, Klass::prototype_header_offset()));
       __ movptr(Address(rax, oopDesc::mark_offset_in_bytes()), rscratch1);
     } else {
@@ -3379,7 +3396,7 @@ void TemplateTable::_new() {
     }
     __ xorl(rcx, rcx); // use zero reg to clear memory (shorter code)
     __ store_klass_gap(rax, rcx);  // zero klass gap for compressed oops
-    __ store_klass(rax, rsi);      // store klass last
+    __ store_klass(rax, rsi);      // store klass last，保持klass指针
 
     {
       SkipIfEqual skip(_masm, &DTraceAllocProbes, false);
@@ -3390,14 +3407,15 @@ void TemplateTable::_new() {
       __ pop(atos); // restore the return value
 
     }
-    __ jmp(done);
+    __ jmp(done);// 直接完成，所以只执行初始化header
   }
 
 
   // slow case
   __ bind(slow_case);
-  __ get_constant_pool(c_rarg1);
+  __ get_constant_pool(c_rarg1);// 获取常量池
   __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
+  // 慢速分配，其实也是正常分配逻辑
   call_VM(rax, CAST_FROM_FN_PTR(address, InterpreterRuntime::_new), c_rarg1, c_rarg2);
   __ verify_oop(rax);
 
@@ -3593,6 +3611,8 @@ void TemplateTable::athrow() {
 // [frame data   ] <--- monitor block bot
 // ...
 // [saved rbp    ] <--- rbp
+// 这是最外层执行字节码，是所有cpu通用执行定义
+// monitorenter字节码入口 
 void TemplateTable::monitorenter() {
   transition(atos, vtos);
 
@@ -3640,10 +3660,14 @@ void TemplateTable::monitorenter() {
 
   __ testptr(c_rarg1, c_rarg1); // check if a slot has been found
   __ jcc(Assembler::notZero, allocated); // if found, continue with that one
-
+  // rsp：栈寄存器
+  // rdx：操作数寄存器
+  // rax：存储结果
+  // rcx: 一般循环loop计数
   // allocate one if there's no free slot
   {
     Label entry, loop;
+    // 计算新的指针（s）
     // 1. compute new pointers             // rsp: old expression stack top
     __ movptr(c_rarg1, monitor_block_bot); // c_rarg1: old expression stack bottom
     __ subptr(rsp, entry_size);            // move expression stack top
@@ -3651,6 +3675,7 @@ void TemplateTable::monitorenter() {
     __ mov(c_rarg3, rsp);                  // set start value for copy loop
     __ movptr(monitor_block_bot, c_rarg1); // set new monitor block bottom
     __ jmp(entry);
+        // 移动到指令（expression）到栈的内容
     // 2. move expression stack contents
     __ bind(loop);
     __ movptr(c_rarg2, Address(c_rarg3, entry_size)); // load expression stack
@@ -3672,9 +3697,18 @@ void TemplateTable::monitorenter() {
   // The object has already been poped from the stack, so the
   // expression stack looks correct.
   __ increment(r13);
+  // 所以锁相关操作：
+  // 1. 申请monitor对象
+  // 2.进行lock_objcect
 
+  // 
+  // 存储java对象指针到rax
+  //    java对象指针通过rdx的BasicObjectLock的obj偏移量来拿到
   // store object
   __ movptr(Address(c_rarg1, BasicObjectLock::obj_offset_in_bytes()), rax);
+  
+  // 执行底层汇编器的lockobject
+  // 64位的InterpreterMacroAssembler::lock_object _64
   __ lock_object(c_rarg1);
 
   // check to make sure this monitor doesn't cause stack overflow after locking

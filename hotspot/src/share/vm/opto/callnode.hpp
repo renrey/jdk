@@ -798,8 +798,8 @@ public:
   }
 
   // Result of Escape Analysis
-  bool _is_scalar_replaceable;
-  bool _is_non_escaping;
+  bool _is_scalar_replaceable;// 可以标量替换
+  bool _is_non_escaping;// 非逃逸
 
   virtual uint size_of() const; // Size is bigger
   AllocateNode(Compile* C, const TypeFunc *atype, Node *ctrl, Node *mem, Node *abio,

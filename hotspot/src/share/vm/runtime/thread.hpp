@@ -433,6 +433,7 @@ class Thread: public ThreadShadow {
   ThreadLocalAllocBuffer& tlab()                 { return _tlab; }
   void initialize_tlab() {
     if (UseTLAB) {
+      // 使用当前线程中预留的tlab空间地址
       tlab().initialize();
     }
   }

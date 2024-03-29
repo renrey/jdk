@@ -259,6 +259,9 @@ HeapWord* CollectedHeap::allocate_from_tlab_slow(KlassHandle klass, Thread* thre
 
   // Retain tlab and allocate object in shared space if
   // the amount free in the tlab is too large to discard.
+// 如果tlab的free的空间太大无法被丢弃，保留当前的tlab空间且分配对象在共享区域
+
+  // 可用空间 > refill_waste_limit 
   if (thread->tlab().free() > thread->tlab().refill_waste_limit()) {
     thread->tlab().record_slow_allocation(size);
     return NULL;
@@ -266,6 +269,9 @@ HeapWord* CollectedHeap::allocate_from_tlab_slow(KlassHandle klass, Thread* thre
 
   // Discard tlab and allocate a new one.
   // To minimize fragmentation, the last TLAB may be smaller than the rest.
+  // 丢失现在tlab，申请新的
+
+  // 计算需要申请的tlab空间！！！
   size_t new_tlab_size = thread->tlab().compute_size(size);
 
   thread->tlab().clear_before_allocation();
@@ -275,6 +281,7 @@ HeapWord* CollectedHeap::allocate_from_tlab_slow(KlassHandle klass, Thread* thre
   }
 
   // Allocate a new TLAB...
+  // 申请新的tlab空间
   HeapWord* obj = Universe::heap()->allocate_new_tlab(new_tlab_size);
   if (obj == NULL) {
     return NULL;
@@ -291,10 +298,12 @@ HeapWord* CollectedHeap::allocate_from_tlab_slow(KlassHandle klass, Thread* thre
     // Skip mangling the space corresponding to the object header to
     // ensure that the returned space is not considered parsable by
     // any concurrent GC thread.
+    // 预留空间给这个分配对象
     size_t hdr_size = oopDesc::header_size();
     Copy::fill_to_words(obj + hdr_size, new_tlab_size - hdr_size, badHeapWordVal);
 #endif // ASSERT
   }
+  // 线程的tlab信息更新
   thread->tlab().fill(obj, obj + size, new_tlab_size);
   return obj;
 }

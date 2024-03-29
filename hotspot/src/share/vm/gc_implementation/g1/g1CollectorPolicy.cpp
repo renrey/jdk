@@ -906,16 +906,20 @@ void G1CollectorPolicy::record_concurrent_pause() {
 }
 
 bool G1CollectorPolicy::need_to_start_conc_mark(const char* source, size_t alloc_word_size) {
+  // 正在执行并发标记，无需自己执行gc
   if (_g1->concurrent_mark()->cmThread()->during_cycle()) {
     return false;
   }
 
+  // 空间执行1次并发gc的周期所需百分比
   size_t marking_initiating_used_threshold =
     (_g1->capacity() / 100) * InitiatingHeapOccupancyPercent;
-  size_t cur_used_bytes = _g1->non_young_capacity_bytes();
-  size_t alloc_byte_size = alloc_word_size * HeapWordSize;
+  size_t cur_used_bytes = _g1->non_young_capacity_bytes(); // 非年轻代空间？
+  size_t alloc_byte_size = alloc_word_size * HeapWordSize; // 本次分配需要的空间
 
+  // 非年轻代的占用（hum+old）+本次需要的对象大小 > 超过1次gc 所需的空间
   if ((cur_used_bytes + alloc_byte_size) > marking_initiating_used_threshold) {
+    // 且young 模式，需要自己进行gc
     if (gcs_are_young() && !_last_young_gc) {
       ergo_verbose5(ErgoConcCycles,
         "request concurrent cycle initiation",
@@ -1953,9 +1957,11 @@ void G1CollectorPolicy::finalize_cset(double target_pause_time_ms, EvacuationInf
                     target_pause_time_ms));
   guarantee(_collection_set == NULL, "Precondition");
 
+  // 预测耗时
   double base_time_ms = predict_base_elapsed_time_ms(_pending_cards);
   double predicted_pause_time_ms = base_time_ms;
   double time_remaining_ms = MAX2(target_pause_time_ms - base_time_ms, 0.0);
+  // 比较目标时间
 
   ergo_verbose4(ErgoCSetConstruction | ErgoHigh,
                 "start choosing CSet",
@@ -1965,6 +1971,7 @@ void G1CollectorPolicy::finalize_cset(double target_pause_time_ms, EvacuationInf
                 ergo_format_ms("target pause time"),
                 _pending_cards, base_time_ms, time_remaining_ms, target_pause_time_ms);
 
+  // 
   _last_gc_was_young = gcs_are_young() ? true : false;
 
   if (_last_gc_was_young) {
@@ -1989,6 +1996,7 @@ void G1CollectorPolicy::finalize_cset(double target_pause_time_ms, EvacuationInf
   }
 
   // Clear the fields that point to the survivor list - they are all young now.
+  // 清理指向suvivor
   young_list->clear_survivors();
 
   _collection_set = _inc_cset_head;

@@ -59,6 +59,7 @@ inline HeapWord* G1AllocRegion::attempt_allocation(size_t word_size,
   HeapRegion* alloc_region = _alloc_region;
   assert(alloc_region != NULL, ar_ext_msg(this, "not initialized properly"));
 
+  // 1. 无锁化申请
   HeapWord* result = par_allocate(alloc_region, word_size, bot_updates);
   if (result != NULL) {
     trace("alloc", word_size, result);
@@ -73,12 +74,18 @@ inline HeapWord* G1AllocRegion::attempt_allocation_locked(size_t word_size,
   // First we have to tedo the allocation, assuming we're holding the
   // appropriate lock, in case another thread changed the region while
   // we were waiting to get the lock.
+  // 加锁分配
+
+  // 1. 从_alloc_region申请空间
   HeapWord* result = attempt_allocation(word_size, bot_updates);
   if (result != NULL) {
     return result;
   }
 
+  // 不成功
+  // 2. 退休_alloc_region
   retire(true /* fill_up */);
+  // 3. 申请新的_alloc_region, 并在上面分配
   result = new_alloc_region_and_allocate(word_size, false /* force */);
   if (result != NULL) {
     trace("alloc locked (second attempt)", word_size, result);

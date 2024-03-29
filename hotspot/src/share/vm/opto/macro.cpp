@@ -661,13 +661,14 @@ bool PhaseMacroExpand::can_eliminate_allocation(AllocateNode *alloc, GrowableArr
   }
 
 #ifndef PRODUCT
-  if (PrintEliminateAllocations) {
+  if (PrintEliminateAllocations) {//打印使用
     if (can_eliminate) {
       tty->print("Scalar ");
       if (res == NULL)
         alloc->dump();
       else
         res->dump();
+    // 分析结果认为
     } else if (alloc->_is_scalar_replaceable) {
       tty->print("NotScalar (%s)", fail_eliminate);
       if (res == NULL)
@@ -981,6 +982,7 @@ bool PhaseMacroExpand::eliminate_allocate_node(AllocateNode *alloc) {
   extract_call_projections(alloc);
 
   GrowableArray <SafePointNode *> safepoints;
+  // 验证是否可以执行标量替换
   if (!can_eliminate_allocation(alloc, safepoints)) {
     return false;
   }
@@ -995,10 +997,12 @@ bool PhaseMacroExpand::eliminate_allocate_node(AllocateNode *alloc) {
     }
   }
 
+// 对对象分配执行标量替换
   if (!scalar_replacement(alloc, safepoints)) {
     return false;
   }
 
+// 成功后操作
   CompileLog* log = C->log();
   if (log != NULL) {
     log->head("eliminate_allocation type='%d'",
@@ -2408,6 +2412,7 @@ void PhaseMacroExpand::expand_unlock_node(UnlockNode *unlock) {
 
 //---------------------------eliminate_macro_nodes----------------------
 // Eliminate scalar replaced allocations and associated locks.
+// 执行标量替换分配、锁清楚
 void PhaseMacroExpand::eliminate_macro_nodes() {
   if (C->macro_count() == 0)
     return;
@@ -2445,6 +2450,7 @@ void PhaseMacroExpand::eliminate_macro_nodes() {
       bool success = false;
       debug_only(int old_macro_count = C->macro_count(););
       switch (n->class_id()) {
+        // 分配对象、数组
       case Node::Class_Allocate:
       case Node::Class_AllocateArray:
         success = eliminate_allocate_node(n->as_Allocate());

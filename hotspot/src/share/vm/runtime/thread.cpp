@@ -1635,9 +1635,10 @@ JavaThread::~JavaThread() {
 
 
 // The first routine called by a new Java thread
+// 1个java线程初始执行
 void JavaThread::run() {
   // initialize thread-local alloc buffer related fields
-  this->initialize_tlab();
+  this->initialize_tlab();// tlab初始化
 
   // used to test validitity of stack trace backs
   this->record_base_of_stack_pointer();
@@ -1671,6 +1672,7 @@ void JavaThread::run() {
 
   EventThreadStart event;
   if (event.should_commit()) {
+    // 线程id
      event.set_javalangthread(java_lang_Thread::thread_id(this->threadObj()));
      event.commit();
   }
@@ -1679,6 +1681,7 @@ void JavaThread::run() {
   // from there will be lower than the stack base just computed
   thread_main_inner();
 
+  // 这里说，到这里线程不再有效？
   // Note, thread is no longer valid at this point!
 }
 
@@ -3388,6 +3391,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   _number_of_non_daemon_threads = 0;
 
   // Initialize global data structures and create system classes in heap
+  // 
   vm_init_globals();
 
   // Attach the main thread to this os thread
@@ -3423,6 +3427,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   MemTracker::bootstrap_multi_thread();
 
   // Initialize global modules
+  // 初始化所有子模块！！！字节码、堆、元空间等
   jint status = init_globals();
   if (status != JNI_OK) {
     delete main_thread;
@@ -3651,6 +3656,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   }
 
   // initialize compiler(s)
+  // 启动初始化jit编译器（c1、c2）
 #if defined(COMPILER1) || defined(COMPILER2) || defined(SHARK)
   CompileBroker::compilation_init();
 #endif

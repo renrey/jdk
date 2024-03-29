@@ -1,0 +1,679 @@
+{
+	"files": [
+		{
+			"path": "hotspot/src/share/vm/interpreter/templateTable.hpp",
+			"bookmarks": [
+				{
+					"line": 93,
+					"column": 0,
+					"label": "TemplateTable-具体调用字节码对应执行方法的入口"
+				},
+				{
+					"line": 175,
+					"column": 0,
+					"label": "iload-从本地变量表的int 数push到操作数栈"
+				},
+				{
+					"line": 182,
+					"column": 0,
+					"label": "istore-保持int到本地变量表"
+				},
+				{
+					"line": 303,
+					"column": 0,
+					"label": "new-创建对象"
+				},
+				{
+					"line": 312,
+					"column": 0,
+					"label": "执行monitorenter入口"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/cpu/x86/vm/templateTable_x86_64.cpp",
+			"bookmarks": [
+				{
+					"line": 3251,
+					"column": 0,
+					"label": "new-字节码分配对象入口"
+				},
+				{
+					"line": 3615,
+					"column": 0,
+					"label": "monitorenter-字节码入口"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/interpreter/interpreterRuntime.cpp",
+			"bookmarks": [
+				{
+					"line": 147,
+					"column": 0,
+					"label": "new-分配对象，慢速（非汇编）"
+				},
+				{
+					"line": 564,
+					"column": 0,
+					"label": "monitorenter- 慢速lock入口，非直接汇编"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/cpu/x86/vm/interp_masm_x86_64.cpp",
+			"bookmarks": [
+				{
+					"line": 687,
+					"column": 0,
+					"label": "lock_object-汇编器上实现lock(快速操作)"
+				},
+				{
+					"line": 779,
+					"column": 0,
+					"label": "执行慢速lock-》调用InterpreterRuntime::monitorenter（不是直接汇编的）"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/interpreter/bytecodes.hpp",
+			"bookmarks": [
+				{
+					"line": 36,
+					"column": 0,
+					"label": "各个字节码指令的16进制编码"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/interpreter/bytecodes.cpp",
+			"bookmarks": [
+				{
+					"line": 294,
+					"column": 0,
+					"label": "初始化bytecode tables"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/runtime/thread.cpp",
+			"bookmarks": [
+				{
+					"line": 1638,
+					"column": 0,
+					"label": "JavaThread::run -- java线程运行方法"
+				},
+				{
+					"line": 1640,
+					"column": 0,
+					"label": "java线程启动-初始化tlab"
+				},
+				{
+					"line": 1683,
+					"column": 0,
+					"label": "线程已无效-》不执行其他操作？"
+				},
+				{
+					"line": 3235,
+					"column": 0,
+					"label": "创建CompilerThread编译器线程"
+				},
+				{
+					"line": 3307,
+					"column": 0,
+					"label": "create_vm-创建当前jvm"
+				},
+				{
+					"line": 3430,
+					"column": 0,
+					"label": "vm启动-初始化所有子模块！！！字节码、堆、元空间等"
+				},
+				{
+					"line": 3660,
+					"column": 0,
+					"label": "vm启动-启动初始化jit编译器（c1、c2）"
+				},
+				{
+					"line": 3689,
+					"column": 0,
+					"label": "vm启动-启动偏向锁后台任务"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/oops/instanceKlass.cpp",
+			"bookmarks": [
+				{
+					"line": 555,
+					"column": 0,
+					"label": "InstanceKlass::initialize-类初始化入口"
+				},
+				{
+					"line": 1127,
+					"column": 0,
+					"label": "allocate_instance-通过InstanceKlass分配对象"
+				},
+				{
+					"line": 1138,
+					"column": 0,
+					"label": "进行堆中分配对象"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_interface/collectedHeap.inline.hpp",
+			"bookmarks": [
+				{
+					"line": 51,
+					"column": 0,
+					"label": "偏向锁-对象分配后，把markword变成带有101的klass原型头"
+				},
+				{
+					"line": 112,
+					"column": 0,
+					"label": "common_mem_allocate_noinit-对象分配流程"
+				},
+				{
+					"line": 127,
+					"column": 0,
+					"label": "调用tlab中对象分配"
+				},
+				{
+					"line": 139,
+					"column": 0,
+					"label": "tlab未分配到，调用堆空间分配mem_allocate"
+				},
+				{
+					"line": 154,
+					"column": 0,
+					"label": "分配失败后报告"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_interface/collectedHeap.hpp",
+			"bookmarks": [
+				{
+					"line": 330,
+					"column": 0,
+					"label": "mem_allocate-堆空间中分配对象内容"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/memory/genCollectedHeap.cpp",
+			"bookmarks": [
+				{
+					"line": 83,
+					"column": 0,
+					"label": "initialize-分代堆初始化"
+				},
+				{
+					"line": 341,
+					"column": 0,
+					"label": "分代堆布局堆-mem_allocate分配内存"
+				},
+				{
+					"line": 961,
+					"column": 0,
+					"label": "unsafe_max_tlab_alloc-分代堆中最大tlab大小"
+				},
+				{
+					"line": 971,
+					"column": 0,
+					"label": "allocate_new_tlab-分代堆申请tlab空间"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/g1/g1CollectedHeap.cpp",
+			"bookmarks": [
+				{
+					"line": 804,
+					"column": 0,
+					"label": "hum对象-分配"
+				},
+				{
+					"line": 865,
+					"column": 0,
+					"label": "allocate_new_tlab-g1堆分配tlab空间"
+				},
+				{
+					"line": 875,
+					"column": 0,
+					"label": "g1布局堆-mem_allocate，分配对象空间"
+				},
+				{
+					"line": 1318,
+					"column": 0,
+					"label": "fullgc"
+				},
+				{
+					"line": 1380,
+					"column": 0,
+					"label": "标记为fullgc"
+				},
+				{
+					"line": 2017,
+					"column": 0,
+					"label": "humongous大小生成"
+				},
+				{
+					"line": 2043,
+					"column": 0,
+					"label": "g1堆-堆初始化"
+				},
+				{
+					"line": 2583,
+					"column": 0,
+					"label": "g1收集-collect入口"
+				},
+				{
+					"line": 3082,
+					"column": 0,
+					"label": "unsafe_max_tlab_alloc-g1的最大tlab大小"
+				},
+				{
+					"line": 3767,
+					"column": 0,
+					"label": "提交younggc"
+				},
+				{
+					"line": 3946,
+					"column": 0,
+					"label": "younggc-真正"
+				},
+				{
+					"line": 4032,
+					"column": 0,
+					"label": "标记非fullgc"
+				},
+				{
+					"line": 6502,
+					"column": 0,
+					"label": "new_mutator_alloc_region"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/parallelScavenge/parallelScavengeHeap.cpp",
+			"bookmarks": [
+				{
+					"line": 246,
+					"column": 0,
+					"label": "ps下内存布局-mem_allocate"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/opto/macro.cpp",
+			"bookmarks": [
+				{
+					"line": 570,
+					"column": 0,
+					"label": "can_eliminate_allocation-是否可执行标量替换"
+				},
+				{
+					"line": 690,
+					"column": 0,
+					"label": "scalar_replacement-执行标量替换"
+				},
+				{
+					"line": 2437,
+					"column": 0,
+					"label": "锁清除"
+				},
+				{
+					"line": 2453,
+					"column": 0,
+					"label": "对分配操作（对象、数组）进行标量替换"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/opto/compile.cpp",
+			"bookmarks": [
+				{
+					"line": 829,
+					"column": 0,
+					"label": "执行优化！！！"
+				},
+				{
+					"line": 1971,
+					"column": 0,
+					"label": "jit编译器优化入口-Optimize"
+				},
+				{
+					"line": 2032,
+					"column": 0,
+					"label": "编译时，执行逃逸分析"
+				},
+				{
+					"line": 2055,
+					"column": 0,
+					"label": "执行标量替换"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/opto/escape.hpp",
+			"bookmarks": [
+				{
+					"line": 580,
+					"column": 0,
+					"label": "执行逃逸分析方法接口"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/opto/macro.hpp",
+			"bookmarks": [
+				{
+					"line": 90,
+					"column": 0,
+					"label": "是否可以eliminate_allocation"
+				},
+				{
+					"line": 91,
+					"column": 0,
+					"label": "scalar_replacement-标量替换方法"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/opto/callnode.hpp",
+			"bookmarks": [
+				{
+					"line": 800,
+					"column": 0,
+					"label": "Escape Analysis结果"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/compiler/compileBroker.hpp",
+			"bookmarks": [
+				{
+					"line": 38,
+					"column": 0,
+					"label": "CompileTask-编译认为"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/compiler/compileBroker.cpp",
+			"bookmarks": [
+				{
+					"line": 919,
+					"column": 0,
+					"label": "创建complie线程"
+				},
+				{
+					"line": 1511,
+					"column": 0,
+					"label": "新建CompileTask"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/memory/universe.cpp",
+			"bookmarks": [
+				{
+					"line": 638,
+					"column": 0,
+					"label": "触发初始化堆！！！"
+				},
+				{
+					"line": 644,
+					"column": 0,
+					"label": "Metaspace初始化 "
+				},
+				{
+					"line": 664,
+					"column": 0,
+					"label": "StringTable创建"
+				},
+				{
+					"line": 779,
+					"column": 0,
+					"label": "initialize_heap-堆初始化"
+				},
+				{
+					"line": 785,
+					"column": 0,
+					"label": "堆初始化-ps类型初始化"
+				},
+				{
+					"line": 793,
+					"column": 0,
+					"label": "堆初始化-g1类型堆初始化"
+				},
+				{
+					"line": 820,
+					"column": 0,
+					"label": "堆初始化-gc相关初始化"
+				},
+				{
+					"line": 824,
+					"column": 0,
+					"label": "堆初始化-分代堆"
+				},
+				{
+					"line": 830,
+					"column": 0,
+					"label": "进行具体类型堆的初始化"
+				},
+				{
+					"line": 837,
+					"column": 0,
+					"label": "堆初始化-压缩指针初始化"
+				},
+				{
+					"line": 904,
+					"column": 0,
+					"label": "堆初始化-tlab初始化"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/memory/threadLocalAllocBuffer.cpp",
+			"bookmarks": [
+				{
+					"line": 165,
+					"column": 0,
+					"label": "记录tlab区域信息"
+				},
+				{
+					"line": 189,
+					"column": 0,
+					"label": "线程tlab-初始化"
+				},
+				{
+					"line": 213,
+					"column": 0,
+					"label": "tlab模块-初始化"
+				},
+				{
+					"line": 237,
+					"column": 0,
+					"label": "计算tlab期望空间"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/g1/heapRegion.cpp",
+			"bookmarks": [
+				{
+					"line": 149,
+					"column": 0,
+					"label": "reigon数量-2048"
+				},
+				{
+					"line": 155,
+					"column": 0,
+					"label": "初始化reigon大小！！！"
+				},
+				{
+					"line": 157,
+					"column": 0,
+					"label": "默认下参数-生成单个region大小"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/memory/threadLocalAllocBuffer.inline.hpp",
+			"bookmarks": [
+				{
+					"line": 33,
+					"column": 0,
+					"label": "线程tlab区域中分配对象"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/os/linux/vm/os_linux.cpp",
+			"bookmarks": [
+				{
+					"line": 805,
+					"column": 0,
+					"label": "创建linux线程后执行java线程的初始化"
+				},
+				{
+					"line": 859,
+					"column": 0,
+					"label": "调用java线程run"
+				},
+				{
+					"line": 864,
+					"column": 0,
+					"label": "创建线程方法"
+				},
+				{
+					"line": 934,
+					"column": 0,
+					"label": "执行创建linux线程，并调用java线程初始方法"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_interface/collectedHeap.cpp",
+			"bookmarks": [
+				{
+					"line": 257,
+					"column": 0,
+					"label": "tlab区域慢速分配对象"
+				},
+				{
+					"line": 284,
+					"column": 0,
+					"label": "tlab慢速分配-申请新的tlab空间"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/memory/collectorPolicy.cpp",
+			"bookmarks": [
+				{
+					"line": 640,
+					"column": 0,
+					"label": "分代堆策略-分配内存空间"
+				},
+				{
+					"line": 971,
+					"column": 0,
+					"label": "cms-initialize_generations初始化具体分代"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/memory/defNewGeneration.cpp",
+			"bookmarks": [
+				{
+					"line": 518,
+					"column": 0,
+					"label": "年轻代-分配from空间大小"
+				},
+				{
+					"line": 1074,
+					"column": 0,
+					"label": "def年轻代-申请分配空间"
+				},
+				{
+					"line": 1130,
+					"column": 0,
+					"label": "par_allocate-分配空间"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/memory/space.cpp",
+			"bookmarks": [
+				{
+					"line": 938,
+					"column": 0,
+					"label": "eden区-并行分配空间-无锁"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/g1/g1CollectorPolicy.cpp",
+			"bookmarks": [
+				{
+					"line": 178,
+					"column": 0,
+					"label": "设置region大小"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/g1/g1AllocRegion.cpp",
+			"bookmarks": [
+				{
+					"line": 86,
+					"column": 0,
+					"label": "_alloc_region_retire-退出更换新的分配region"
+				},
+				{
+					"line": 114,
+					"column": 0,
+					"label": "新建1个当前用于分配的region，且进行分配"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/g1/vm_operations_g1.cpp",
+			"bookmarks": [
+				{
+					"line": 36,
+					"column": 0,
+					"label": "vm线程执行g1fullgc"
+				},
+				{
+					"line": 59,
+					"column": 0,
+					"label": "g1的增量gc-》young gc"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/runtime/synchronizer.cpp",
+			"bookmarks": [
+				{
+					"line": 166,
+					"column": 0,
+					"label": "fast_enter-- 快速加锁，偏向"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/runtime/thread.hpp",
+			"bookmarks": [
+				{
+					"line": 436,
+					"column": 0,
+					"label": "调用初始化tlab空间"
+				}
+			]
+		}
+	]
+}

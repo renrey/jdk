@@ -192,13 +192,16 @@ void ThreadLocalAllocBuffer::initialize() {
              NULL,                    // top
              NULL);                   // end
 
+  // 计算初始期望空间
   set_desired_size(initial_desired_size());
 
   // Following check is needed because at startup the main (primordial)
   // thread is initialized before the heap is.  The initialization for
   // this thread is redone in startup_initialization below.
   if (Universe::heap() != NULL) {
+    // 对应堆中tlab总空间大小
     size_t capacity   = Universe::heap()->tlab_capacity(myThread()) / HeapWordSize;
+    // 期望tlab大小占总tlab空间大小
     double alloc_frac = desired_size() * target_refills() / (double) capacity;
     _allocation_fraction.sample(alloc_frac);
   }
@@ -212,6 +215,7 @@ void ThreadLocalAllocBuffer::startup_initialization() {
 
   // Assuming each thread's active tlab is, on average,
   // 1/2 full at a GC
+  // 默认50，即一半
   _target_refills = 100 / (2 * TLABWasteTargetPercent);
   _target_refills = MAX2(_target_refills, (unsigned)1U);
 
@@ -220,6 +224,9 @@ void ThreadLocalAllocBuffer::startup_initialization() {
   // During jvm startup, the main (primordial) thread is initialized
   // before the heap is initialized.  So reinitialize it now.
   guarantee(Thread::current()->is_Java_thread(), "tlab initialization thread not Java thread");
+
+  // 当前线程的tlab初始化
+  // 需要初始化1次，用于分析计算使用
   Thread::current()->tlab().initialize();
 
   if (PrintTLAB && Verbose) {
@@ -238,11 +245,12 @@ size_t ThreadLocalAllocBuffer::initial_desired_size() {
     init_sz = min_size();
   } else {
     // Initial size is a function of the average number of allocating threads.
-    unsigned nof_threads = global_stats()->allocating_threads_avg();
+    unsigned nof_threads = global_stats()->allocating_threads_avg();// 获取tlab线程个数
 
+    // 对应的堆空间/ （初始tlab线程数*每个线程refill数）
     init_sz  = (Universe::heap()->tlab_capacity(myThread()) / HeapWordSize) /
                       (nof_threads * target_refills());
-    init_sz = align_object_size(init_sz);
+    init_sz = align_object_size(init_sz); // 对齐大小
     init_sz = MIN2(MAX2(init_sz, min_size()), max_size());
   }
   return init_sz;

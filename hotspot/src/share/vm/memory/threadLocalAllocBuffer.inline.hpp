@@ -32,8 +32,11 @@
 #include "utilities/copy.hpp"
 
 inline HeapWord* ThreadLocalAllocBuffer::allocate(size_t size) {
-  invariants();
-  HeapWord* obj = top();
+  invariants();// 严重
+  HeapWord* obj = top();// 开始地址
+
+  // 从尾到头有多少个字节
+  // 剩下字节足够对象size-》可放入
   if (pointer_delta(end(), obj) >= size) {
     // successful thread-local allocation
 #ifdef ASSERT
@@ -41,26 +44,32 @@ inline HeapWord* ThreadLocalAllocBuffer::allocate(size_t size) {
     // ensure that the returned space is not considered parsable by
     // any concurrent GC thread.
     size_t hdr_size = oopDesc::header_size();
+    // 拷贝 hdr后的内容 到对应tlab区域（top+hdr_size开始的位置）
     Copy::fill_to_words(obj + hdr_size, size - hdr_size, badHeapWordVal);
 #endif // ASSERT
     // This addition is safe because we know that top is
     // at least size below end, so the add can't wrap.
+
+    // 更新top-》加上本次大小
     set_top(obj + size);
 
     invariants();
-    return obj;
+    return obj;// 返回本次的top
   }
   return NULL;
 }
 
 inline size_t ThreadLocalAllocBuffer::compute_size(size_t obj_size) {
-  const size_t aligned_obj_size = align_object_size(obj_size);
+  const size_t aligned_obj_size = align_object_size(obj_size);// 对齐后对象大小
 
   // Compute the size for the new TLAB.
   // The "last" tlab may be smaller to reduce fragmentation.
   // unsafe_max_tlab_alloc is just a hint.
+  // 当前堆中剩余tlab 可用空间
   const size_t available_size = Universe::heap()->unsafe_max_tlab_alloc(myThread()) /
                                                   HeapWordSize;
+  // 正常申请的tlab大小 = 当前线程tlab期望大小 + 目标对象需要空间（对齐）
+  // 就是可用空间不足，才会变成当前剩余可用tlab空间
   size_t new_tlab_size = MIN2(available_size, desired_size() + aligned_obj_size);
 
   // Make sure there's enough room for object and filler int[].

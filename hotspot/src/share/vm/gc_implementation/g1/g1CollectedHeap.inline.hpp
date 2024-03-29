@@ -66,9 +66,11 @@ G1CollectedHeap::attempt_allocation(size_t word_size,
   assert_heap_not_locked_and_not_at_safepoint();
   assert(!isHumongous(word_size), "attempt_allocation() should not "
          "be called for humongous allocation requests");
-
+  // 1. 在_mutator_alloc_region进行无锁化申请
   HeapWord* result = _mutator_alloc_region.attempt_allocation(word_size,
                                                       false /* bot_updates */);
+
+  // 2. 慢速分配                                                    
   if (result == NULL) {
     result = attempt_allocation_slow(word_size,
                                      gc_count_before_ret,
@@ -76,6 +78,7 @@ G1CollectedHeap::attempt_allocation(size_t word_size,
   }
   assert_heap_not_locked();
   if (result != NULL) {
+    // 3. 分配成功，标记young block成dirty
     dirty_young_block(result, word_size);
   }
   return result;
@@ -134,6 +137,7 @@ G1CollectedHeap::dirty_young_block(HeapWord* start, size_t word_size) {
   HeapWord* end = start + word_size;
   assert(containing_hr->is_in(end - 1), "it should also contain end - 1");
 
+  // cardtable中这个区域记录为年轻-》即dirty
   MemRegion mr(start, end);
   g1_barrier_set()->g1_mark_as_young(mr);
 }

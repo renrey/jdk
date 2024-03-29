@@ -87,10 +87,12 @@ inline void post_allocation_notify(KlassHandle klass, oop obj) {
 
 void CollectedHeap::post_allocation_setup_obj(KlassHandle klass,
                                               HeapWord* obj) {
+  // markword相关                                                                                            
   post_allocation_setup_common(klass, obj);
   assert(Universe::is_bootstrapping() ||
          !((oop)obj)->is_array(), "must not be an array");
   // notify jvmti and dtrace
+  // 通知jvmti、dtrace
   post_allocation_notify(klass, (oop)obj);
 }
 
@@ -120,7 +122,9 @@ HeapWord* CollectedHeap::common_mem_allocate_noinit(KlassHandle klass, size_t si
   }
 
   HeapWord* result = NULL;
+  // tlab
   if (UseTLAB) {
+    // 1. 先尝试tlab分配 
     result = allocate_from_tlab(klass, THREAD, size);
     if (result != NULL) {
       assert(!HAS_PENDING_EXCEPTION,
@@ -129,6 +133,10 @@ HeapWord* CollectedHeap::common_mem_allocate_noinit(KlassHandle klass, size_t si
     }
   }
   bool gc_overhead_limit_was_exceeded = false;
+
+  // 2. tlab分配失败，共享内存分配
+
+  // 
   result = Universe::heap()->mem_allocate(size,
                                           &gc_overhead_limit_was_exceeded);
   if (result != NULL) {
@@ -143,7 +151,7 @@ HeapWord* CollectedHeap::common_mem_allocate_noinit(KlassHandle klass, size_t si
     return result;
   }
 
-
+  // 3. 分配失败，报告
   if (!gc_overhead_limit_was_exceeded) {
     // -XX:+HeapDumpOnOutOfMemoryError and -XX:OnOutOfMemoryError support
     report_java_out_of_memory("Java heap space");
@@ -169,20 +177,25 @@ HeapWord* CollectedHeap::common_mem_allocate_noinit(KlassHandle klass, size_t si
   }
 }
 
+// common_mem -> 通用共享内存分配
 HeapWord* CollectedHeap::common_mem_allocate_init(KlassHandle klass, size_t size, TRAPS) {
+  // 1. 核心分配流程
   HeapWord* obj = common_mem_allocate_noinit(klass, size, CHECK_NULL);
+ 
+  // 分配后，对象空间对齐
   init_obj(obj, size);
   return obj;
 }
 
 HeapWord* CollectedHeap::allocate_from_tlab(KlassHandle klass, Thread* thread, size_t size) {
   assert(UseTLAB, "should use UseTLAB");
-
+  // 1. 直接基于tlab top地址开始分配
   HeapWord* obj = thread->tlab().allocate(size);
   if (obj != NULL) {
     return obj;
   }
   // Otherwise...
+  // 2. 慢速tlab
   return allocate_from_tlab_slow(klass, thread, size);
 }
 
@@ -191,6 +204,8 @@ void CollectedHeap::init_obj(HeapWord* obj, size_t size) {
   const size_t hs = oopDesc::header_size();
   assert(size >= hs, "unexpected object size");
   ((oop)obj)->set_klass_gap(0);
+
+  // 填充对齐
   Copy::fill_to_aligned_words(obj + hs, size - hs);
 }
 
@@ -198,7 +213,10 @@ oop CollectedHeap::obj_allocate(KlassHandle klass, int size, TRAPS) {
   debug_only(check_for_valid_allocation_state());
   assert(!Universe::heap()->is_gc_active(), "Allocation during gc not allowed");
   assert(size >= 0, "int won't convert to size_t");
+  // 分配
   HeapWord* obj = common_mem_allocate_init(klass, size, CHECK_NULL);
+
+  // 分配对象空间完成后，后置操作，markword等
   post_allocation_setup_obj(klass, obj);
   NOT_PRODUCT(Universe::heap()->check_for_bad_heap_word_value(obj, size));
   return (oop)obj;

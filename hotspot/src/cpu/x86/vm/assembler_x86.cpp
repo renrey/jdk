@@ -848,6 +848,7 @@ void Assembler::emit_operand32(Register reg, Address adr) {
                adr._rspec);
 }
 
+// 提交到operand栈
 void Assembler::emit_operand(Register reg, Address adr,
                              int rip_relative_correction) {
   emit_operand(reg, adr._base, adr._index, adr._scale, adr._disp,
@@ -1766,8 +1767,8 @@ void Assembler::movl(Address dst, int32_t imm32) {
 void Assembler::movl(Address dst, Register src) {
   InstructionMark im(this);
   prefix(dst, src);
-  emit_int8((unsigned char)0x89);
-  emit_operand(src, dst);
+  emit_int8((unsigned char)0x89);// movl指令
+  emit_operand(src, dst);// 提交到操作数
 }
 
 // New cpus require to use movsd and movss to avoid partial register stall

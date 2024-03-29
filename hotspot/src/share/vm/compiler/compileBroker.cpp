@@ -797,7 +797,7 @@ void CompileBroker::compilation_init() {
 
 #ifdef COMPILER2
   if (c2_count > 0) {
-    _compilers[1] = new C2Compiler();
+    _compilers[1] = new C2Compiler();// c2创建
   }
 #endif // COMPILER2
 
@@ -812,6 +812,7 @@ void CompileBroker::compilation_init() {
   _task_free_list = NULL;
 
   // Start the CompilerThreads
+  // 启动CompilerThreads
   init_compiler_threads(c1_count, c2_count);
   // totalTime performance counter is always created as it is required
   // by the implementation of java.lang.management.CompilationMBean.
@@ -1002,6 +1003,7 @@ void CompileBroker::init_compiler_threads(int c1_compiler_count, int c2_compiler
   assert(c2_compiler_count > 0 || c1_compiler_count > 0, "No compilers?");
 #endif // !ZERO && !SHARK
   // Initialize the compilation queue
+  // 初始化queue
   if (c2_compiler_count > 0) {
     _c2_method_queue  = new CompileQueue("C2MethodQueue",  MethodCompileQueue_lock);
     _compilers[1]->set_num_compiler_threads(c2_compiler_count);
@@ -1022,6 +1024,7 @@ void CompileBroker::init_compiler_threads(int c1_compiler_count, int c2_compiler
     sprintf(name_buffer, "C2 CompilerThread%d", i);
     CompilerCounters* counters = new CompilerCounters("compilerThread", i, CHECK);
     // Shark and C2
+    // 创建compiler_thread线程-》c2
     CompilerThread* new_thread = make_compiler_thread(name_buffer, _c2_method_queue, counters, _compilers[1], CHECK);
     _compiler_threads->append(new_thread);
   }
@@ -1031,6 +1034,7 @@ void CompileBroker::init_compiler_threads(int c1_compiler_count, int c2_compiler
     sprintf(name_buffer, "C1 CompilerThread%d", i);
     CompilerCounters* counters = new CompilerCounters("compilerThread", i, CHECK);
     // C1
+    // 创建线程
     CompilerThread* new_thread = make_compiler_thread(name_buffer, _c1_method_queue, counters, _compilers[0], CHECK);
     _compiler_threads->append(new_thread);
   }
@@ -1504,6 +1508,7 @@ CompileTask* CompileBroker::allocate_task() {
     _task_free_list = task->next();
     task->set_next(NULL);
   } else {
+    // 新建CompileTask
     task = new CompileTask();
     task->set_next(NULL);
   }

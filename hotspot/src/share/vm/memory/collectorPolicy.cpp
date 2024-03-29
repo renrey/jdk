@@ -659,18 +659,22 @@ HeapWord* GenCollectorPolicy::mem_allocate_work(size_t size,
     HandleMark hm; // discard any handles allocated in each iteration
 
     // First allocation attempt is lock-free.
+    // 无锁-年轻代
     Generation *gen0 = gch->get_gen(0);
     assert(gen0->supports_inline_contig_alloc(),
       "Otherwise, must do alloc within heap lock");
     if (gen0->should_allocate(size, is_tlab)) {
+      // 无锁申请空间
       result = gen0->par_allocate(size, is_tlab);
       if (result != NULL) {
         assert(gch->is_in_reserved(result), "result not in heap");
         return result;
       }
     }
+    // 加锁，串行申请空间
     unsigned int gc_count_before;  // read inside the Heap_lock locked region
     {
+      // 加锁
       MutexLocker ml(Heap_lock);
       if (PrintGC && Verbose) {
         gclog_or_tty->print_cr("TwoGenerationCollectorPolicy::mem_allocate_work:"
@@ -680,6 +684,7 @@ HeapWord* GenCollectorPolicy::mem_allocate_work(size_t size,
       // allocated in later generations.
       bool first_only = ! should_try_older_generation_allocation(size);
 
+      // 尝试串行申请空间（每个代都进行）
       result = gch->attempt_allocation(size, is_tlab, first_only);
       if (result != NULL) {
         assert(gch->is_in_reserved(result), "result not in heap");

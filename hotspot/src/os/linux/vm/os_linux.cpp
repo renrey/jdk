@@ -931,6 +931,7 @@ bool os::create_thread(Thread* thread, ThreadType thr_type, size_t stack_size) {
     }
 
     pthread_t tid;
+    // pthread_create创建linux线程
     int ret = pthread_create(&tid, &attr, (void* (*)(void*)) java_start, thread);
 
     pthread_attr_destroy(&attr);

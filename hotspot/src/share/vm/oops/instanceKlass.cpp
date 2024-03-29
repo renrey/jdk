@@ -1127,12 +1127,15 @@ instanceOop InstanceKlass::register_finalizer(instanceOop i, TRAPS) {
 
 instanceOop InstanceKlass::allocate_instance(TRAPS) {
   bool has_finalizer_flag = has_finalizer(); // Query before possible GC
+  // 计算需要的空间（通过Klass的定义计算内存布局）
   int size = size_helper();  // Query before forming handle.
 
+// 创建Klass的句柄
   KlassHandle h_k(THREAD, this);
 
   instanceOop i;
 
+  // 在堆中分配对象
   i = (instanceOop)CollectedHeap::obj_allocate(h_k, size, CHECK_NULL);
   if (has_finalizer_flag && !RegisterFinalizersAtInit) {
     i = register_finalizer(i, CHECK_NULL);

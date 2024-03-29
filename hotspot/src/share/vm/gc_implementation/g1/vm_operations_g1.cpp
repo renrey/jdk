@@ -53,6 +53,7 @@ void VM_G1CollectForAllocation::doit() {
 void VM_G1CollectFull::doit() {
   G1CollectedHeap* g1h = G1CollectedHeap::heap();
   GCCauseSetter x(g1h, _gc_cause);
+  // 先fullgc，软引用不清
   g1h->do_full_collection(false /* clear_all_soft_refs */);
 }
 
@@ -97,6 +98,7 @@ void VM_G1IncCollectionPause::doit() {
     _gc_cause == GCCause::_g1_humongous_allocation),
          "only a GC locker, a System.gc() or a hum allocation induced GC should start a cycle");
 
+  // 尝试再分配
   if (_word_size > 0) {
     // An allocation has been requested. So, try to do that first.
     _result = g1h->attempt_allocation_at_safepoint(_word_size,
@@ -110,6 +112,7 @@ void VM_G1IncCollectionPause::doit() {
   }
 
   GCCauseSetter x(g1h, _gc_cause);
+  // 老年代相关的才执行
   if (_should_initiate_conc_mark) {
     // It's safer to read old_marking_cycles_completed() here, given
     // that noone else will be updating it concurrently. Since we'll
@@ -148,6 +151,7 @@ void VM_G1IncCollectionPause::doit() {
     }
   }
 
+  // 执行gc
   _pause_succeeded =
     g1h->do_collection_pause_at_safepoint(_target_pause_time_ms);
   if (_pause_succeeded && _word_size > 0) {

@@ -136,7 +136,7 @@ class TemplateTable: AllStatic {
   static void nop();
 
   static void aconst_null();
-  static void iconst(int value);
+  static void iconst(int value);// 写入int到操作数栈
   static void lconst(int value);
   static void fconst(int value);
   static void dconst(int value);
@@ -173,14 +173,14 @@ class TemplateTable: AllStatic {
   static void caload();
   static void saload();
 
-  static void iload(int n);
+  static void iload(int n);// 从本地变量表的int 数push到操作数栈
   static void lload(int n);
   static void fload(int n);
   static void dload(int n);
   static void aload(int n);
   static void aload_0();
 
-  static void istore();
+  static void istore();// 把操作数栈int参数保存到本地变量表，无指定存放本地变量表index位置
   static void lstore();
   static void fstore();
   static void dstore();
