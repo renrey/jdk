@@ -155,7 +155,7 @@ void G1AllocRegion::init() {
   assert(_alloc_region == NULL && _used_bytes_before == 0,
          ar_ext_msg(this, "pre-condition"));
   assert(_dummy_region != NULL, ar_ext_msg(this, "should have been set"));
-  _alloc_region = _dummy_region;
+  _alloc_region = _dummy_region;// 初始是_dummy_region
   _count = 0;
   trace("initialized");
 }

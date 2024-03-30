@@ -88,9 +88,9 @@ public:
                           double         target_pause_time_ms,
                           GCCause::Cause gc_cause);
   virtual VMOp_Type type() const { return VMOp_G1IncCollectionPause; }
-  virtual bool doit_prologue();
-  virtual void doit();
-  virtual void doit_epilogue();
+  virtual bool doit_prologue();// 提交到vm_queue前
+  virtual void doit(); // 执行中，VM_Operation::evaluate()调用
+  virtual void doit_epilogue();// 执行完成后
   virtual const char* name() const {
     return "garbage-first incremental collection pause";
   }

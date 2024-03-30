@@ -95,6 +95,7 @@ void G1SATBCardTableModRefBS::g1_mark_as_young(const MemRegion& mr) {
   jbyte *const first = byte_for(mr.start());
   jbyte *const last = byte_after(mr.last());
 
+  // 把first到last的（cardtable）byte都设成1
   memset(first, g1_young_gen, last - first);
 }
 

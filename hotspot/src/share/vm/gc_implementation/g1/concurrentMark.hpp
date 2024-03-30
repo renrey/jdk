@@ -378,8 +378,8 @@ class ConcurrentMark: public CHeapObj<mtGC> {
   friend class G1CMDrainMarkingStackClosure;
 
 protected:
-  ConcurrentMarkThread* _cmThread;   // the thread doing the work
-  G1CollectedHeap*      _g1h;        // the heap.
+  ConcurrentMarkThread* _cmThread;   // the thread doing the work，正在cm的线程
+  G1CollectedHeap*      _g1h;        // the heap. g1堆的对象
   uint                  _parallel_marking_threads; // the number of marking
                                                    // threads we're use
   uint                  _max_parallel_marking_threads; // max number of marking
@@ -391,10 +391,11 @@ protected:
                                                 // a single task
 
   // same as the two above, but for the cleanup task
+  // 清理（回收）的属性
   double                _cleanup_sleep_factor;
   double                _cleanup_task_overhead;
 
-  FreeRegionList        _cleanup_list;
+  FreeRegionList        _cleanup_list;// 需要清理的region
 
   // Concurrent marking support structures
   CMBitMap                _markBitMap1;
@@ -412,7 +413,7 @@ protected:
   // Root region tracking and claiming.
   CMRootRegions           _root_regions;
 
-  // For gray objects
+  // For gray objects，用于记录灰色的对象（即已扫描但未完成标记）
   CMMarkStack             _markStack; // Grey objects behind global finger.
   HeapWord* volatile      _finger;  // the global finger, region aligned,
                                     // always points to the end of the

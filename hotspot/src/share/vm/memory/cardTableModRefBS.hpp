@@ -159,6 +159,8 @@ class CardTableModRefBS: public ModRefBarrierSet {
     // 右移9位=除以512，所以byte_map_base中1个代表512b
     // 可以想成实际地址中的前n-9位作为连续512b内存的段地址，并且是（二进制）对齐的（地址共同前缀段）
     // 拿到当前地址所处于归属的page 的cardtable值
+
+    // 在cardtable的下标
     jbyte* result = &byte_map_base[uintptr_t(p) >> card_shift];
     assert(result >= _byte_map && result < _byte_map + _byte_map_size,
            "out of bounds accessor for card marking array");

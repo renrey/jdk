@@ -82,8 +82,8 @@ inline HeapWord* G1AllocRegion::attempt_allocation_locked(size_t word_size,
     return result;
   }
 
-  // 不成功
-  // 2. 退休_alloc_region
+  // 不成功（需要申请新的region）
+  // 2. 退休当前_alloc_region
   retire(true /* fill_up */);
   // 3. 申请新的_alloc_region, 并在上面分配
   result = new_alloc_region_and_allocate(word_size, false /* force */);

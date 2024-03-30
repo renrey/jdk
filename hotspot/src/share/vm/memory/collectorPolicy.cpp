@@ -734,6 +734,7 @@ HeapWord* GenCollectorPolicy::mem_allocate_work(size_t size,
       gc_count_before = Universe::heap()->total_collections();
     }
 
+    // 申請失敗執行gc
     VM_GenCollectForAllocation op(size, is_tlab, gc_count_before);
     VMThread::execute(&op);
     if (op.prologue_succeeded()) {

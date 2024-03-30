@@ -907,6 +907,7 @@ void ConcurrentMark::checkpointRootsInitialPre() {
 #endif
 
   // Initialise marking structures. This has to be done in a STW phase.
+  // 重置标记的数据结构
   reset();
 
   // For each region note start of marking.

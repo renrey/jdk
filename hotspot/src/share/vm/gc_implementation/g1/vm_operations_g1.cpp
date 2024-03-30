@@ -74,6 +74,7 @@ VM_G1IncCollectionPause::VM_G1IncCollectionPause(
   _gc_cause = gc_cause;
 }
 
+// 提交vm_queue前
 bool VM_G1IncCollectionPause::doit_prologue() {
   bool res = VM_GC_Operation::doit_prologue();
   if (!res) {
@@ -89,7 +90,7 @@ bool VM_G1IncCollectionPause::doit_prologue() {
   }
   return res;
 }
-
+// 执行中
 void VM_G1IncCollectionPause::doit() {
   G1CollectedHeap* g1h = G1CollectedHeap::heap();
   assert(!_should_initiate_conc_mark ||
@@ -151,11 +152,12 @@ void VM_G1IncCollectionPause::doit() {
     }
   }
 
-  // 执行gc
+  // （stw中）执行gc
   _pause_succeeded =
     g1h->do_collection_pause_at_safepoint(_target_pause_time_ms);
   if (_pause_succeeded && _word_size > 0) {
     // An allocation had been requested.
+    // GC完成后且还在safepoint，尝试分配
     _result = g1h->attempt_allocation_at_safepoint(_word_size,
                                       true /* expect_null_cur_alloc_region */);
   } else {
@@ -170,6 +172,7 @@ void VM_G1IncCollectionPause::doit() {
   }
 }
 
+// 完成后
 void VM_G1IncCollectionPause::doit_epilogue() {
   VM_GC_Operation::doit_epilogue();
 

@@ -444,7 +444,7 @@ void G1CollectorPolicy::init() {
 
   assert(Heap_lock->owned_by_self(), "Locking discipline.");
 
-  initialize_gc_policy_counters();
+  initialize_gc_policy_counters();// 计数器
 
   if (adaptive_young_list_length()) {
     _young_list_fixed_length = 0;
@@ -456,6 +456,7 @@ void G1CollectorPolicy::init() {
 
   // We may immediately start allocating regions and placing them on the
   // collection set list. Initialize the per-collection set info
+  // 初始化增量cset属性
   start_incremental_cset_building();
 }
 

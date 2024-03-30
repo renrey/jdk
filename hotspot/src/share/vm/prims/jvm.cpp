@@ -2848,6 +2848,7 @@ JVM_ENTRY(void, JVM_StartThread(JNIEnv* env, jobject jthread))
       // size_t (an unsigned type), so avoid passing negative values which would
       // result in really large stacks.
       size_t sz = size > 0 ? (size_t) size : 0;
+      // 一般代码中创建线程
       native_thread = new JavaThread(&thread_entry, sz);
 
       // At this point it may be possible that no osthread was created for the

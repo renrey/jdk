@@ -492,6 +492,7 @@ class CollectedHeap : public CHeapObj<mtInternal> {
 
   // Increment total number of GC collections (started)
   // Should be protected but used by PSMarkSweep - cleanup for 1.4.2
+  // gc次数统计+1
   void increment_total_collections(bool full = false) {
     _total_collections++;
     if (full) {

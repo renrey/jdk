@@ -859,6 +859,7 @@ inline HeapWord* ContiguousSpace::allocate_impl(size_t size,
 // This version is lock-free.
 inline HeapWord* ContiguousSpace::par_allocate_impl(size_t size,
                                                     HeapWord* const end_value) {
+  // 失败会一直尝试，直到空间不足                                                    
   do {
     HeapWord* obj = top();
     // 剩余空间足够

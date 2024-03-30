@@ -1434,7 +1434,7 @@ void JavaThread::initialize() {
   clear_must_deopt_id();
   set_monitor_chunks(NULL);
   set_next(NULL);
-  set_thread_state(_thread_new);
+  set_thread_state(_thread_new);// 线程初始状态NEW
 #if INCLUDE_NMT
   set_recorder(NULL);
 #endif
@@ -1505,6 +1505,7 @@ JavaThread::JavaThread(bool is_attaching_via_jni) :
   _dirty_card_queue(&_dirty_card_queue_set)
 #endif // INCLUDE_ALL_GCS
 {
+  // java线程初始化
   initialize();
   if (is_attaching_via_jni) {
     _jni_attach_state = _attaching_via_jni;
@@ -1512,7 +1513,7 @@ JavaThread::JavaThread(bool is_attaching_via_jni) :
     _jni_attach_state = _not_attaching_via_jni;
   }
   assert(deferred_card_mark().is_empty(), "Default MemRegion ctor");
-  _safepoint_visible = false;
+  _safepoint_visible = false;// saftepoint 默认false
 }
 
 bool JavaThread::reguard_stack(address cur_sp) {

@@ -863,6 +863,7 @@ HeapWord* G1CollectedHeap::humongous_obj_allocate(size_t word_size) {
   return result;
 }
 
+// 申请tlab空间
 HeapWord* G1CollectedHeap::allocate_new_tlab(size_t word_size) {
   assert_heap_not_locked_and_not_at_safepoint();
   assert(!isHumongous(word_size), "we do not allow humongous TLABs");
@@ -872,8 +873,9 @@ HeapWord* G1CollectedHeap::allocate_new_tlab(size_t word_size) {
   return attempt_allocation(word_size, &dummy_gc_count_before, &dummy_gclocker_retry_count);
 }
 
-HeapWord*
-G1CollectedHeap::mem_allocate(size_t word_size,
+// !!! 入口
+// 申请对象空间
+HeapWord* G1CollectedHeap::mem_allocate(size_t word_size,
                               bool*  gc_overhead_limit_was_exceeded) {
   assert_heap_not_locked_and_not_at_safepoint();
 
@@ -907,8 +909,8 @@ G1CollectedHeap::mem_allocate(size_t word_size,
       // if it is NULL. If the allocation attempt failed immediately
       // after a Full GC, it's unlikely we'll be able to allocate now.
 
-      // fullgc后成功
-      // 标记年轻代
+      // fullgc后成功分配
+      // 在cardtable标记對應region區域為年轻代（dirty，=1）
       HeapWord* result = op.result();
       if (result != NULL && !isHumongous(word_size)) {
         // Allocations that take place on VM operations do not do any
@@ -961,6 +963,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size,
       // 加全局堆锁
       MutexLockerEx x(Heap_lock);
       // 加锁类型分配
+      // 并且可能创建新的reigon（alloc_region）
       result = _mutator_alloc_region.attempt_allocation_locked(word_size,
                                                       false /* bot_updates */);
       // 成功返回                                                
@@ -975,7 +978,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size,
       // 慢速分配失败
 
       // 判断是否需要主动gc
-      if (GC_locker::is_active_and_needs_gc()) {
+      if (GC_locker::is_active_and_needs_gc()) {//堆已满 且 GCLocker已active
         // 正在gc
         if (g1_policy()->can_expand_young_list()) {
           // No need for an ergo verbose message here,
@@ -994,16 +997,21 @@ HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size,
         // returns true). In this case we do not try this GC and
         // wait until the GCLocker initiated GC is performed, and
         // then retry the allocation.
+
+        // 堆已满，但GCLocker未active
         if (GC_locker::needs_gc()) {
+          // 这里表示GCLocker初始化的GC还没执行（所以needs_gc返回true），所以不尝试执行gc而是等待那个gc完成
           should_try_gc = false;
-        } else {
+        } else {//GCLocker已active，但堆未满
+
           // Read the GC count while still holding the Heap_lock.
           gc_count_before = total_collections();
-          should_try_gc = true;
+          should_try_gc = true;// 会尝试1次gc
         }
       }
     }
 
+    // 尝试执行gc
     if (should_try_gc) {
       bool succeeded;
       // 执行stw的增量gc
@@ -1018,6 +1026,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size,
         // If we get here we successfully scheduled a collection which
         // failed to allocate. No point in trying to allocate
         // further. We'll just return NULL.
+        // 加锁。然后更新gc前gc的次数？
         MutexLockerEx x(Heap_lock);
         *gc_count_before_ret = total_collections();
         return NULL;
@@ -1090,7 +1099,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_humongous(size_t word_size,
   // 1. 先验证是否需要执行主动执行gc （主要是看 hum+old+本次对象 是否 超过InitiatingHeapOccupancyPercent百分比）
   if (g1_policy()->need_to_start_conc_mark("concurrent humongous allocation",
                                            word_size)) {
-    collect(GCCause::_g1_humongous_allocation);
+    collect(GCCause::_g1_humongous_allocation); // 执行1次gc
   }
 
   // We will loop until a) we manage to successfully perform the
@@ -1196,13 +1205,20 @@ HeapWord* G1CollectedHeap::attempt_allocation_at_safepoint(size_t word_size,
   assert(_mutator_alloc_region.get() == NULL ||
                                              !expect_null_mutator_alloc_region,
          "the current alloc region was unexpectedly found to be non-NULL");
+  // 此时还在safepoint，其他线程未活动       
 
   if (!isHumongous(word_size)) {
+    // 普通对象
+    // 按照常规完整流程分配即可（在当前region分配，失败申请新region再配）
     return _mutator_alloc_region.attempt_allocation_locked(word_size,
                                                       false /* bot_updates */);
   } else {
+    // 大对象
+    // 常规分配
     HeapWord* result = humongous_obj_allocate(word_size);
+    // 大对象分配成功后，需要判断是否进行conc_mark（并发标记）
     if (result != NULL && g1_policy()->need_to_start_conc_mark("STW humongous allocation")) {
+      // 需要并发标记，更新_initiate_conc_mark_if_possible标志位
       g1_policy()->set_initiate_conc_mark_if_possible();
     }
     return result;
@@ -2099,7 +2115,9 @@ jint G1CollectedHeap::initialize() {
   _expansion_regions = (uint) (max_byte_size / HeapRegion::GrainBytes);
 
   // Create the gen rem set (and barrier set) for the entire reserved region.
+  // rem set 
   _rem_set = collector_policy()->create_rem_set(_reserved, 2);
+  // 记录barrier_set -》 使用_rem_set的
   set_barrier_set(rem_set()->bs());
   if (!barrier_set()->is_a(BarrierSet::G1SATBCTLogging)) {
     vm_exit_during_initialization("G1 requires a G1SATBLoggingCardTableModRefBS");
@@ -2107,6 +2125,7 @@ jint G1CollectedHeap::initialize() {
   }
 
   // Also create a G1 rem set.
+  // 封装成G1RemSet
   _g1_rem_set = new G1RemSet(this, g1_barrier_set());
 
   // Carve out the G1 part of the heap.
@@ -2168,7 +2187,8 @@ jint G1CollectedHeap::initialize() {
   _cmThread = _cm->cmThread();
 
   // Initialize the from_card cache structure of HeapRegionRemSet.
-  HeapRegionRemSet::init_heap(max_regions());
+  // 在堆初始化from card缓存（也是remset结构）的空间
+  HeapRegionRemSet::init_heap(max_regions());// 根据region数量上限
 
   // Now expand into the initial heap size.
   if (!expand(init_byte_size)) {
@@ -2183,26 +2203,28 @@ jint G1CollectedHeap::initialize() {
     new RefineCardTableEntryClosure(ConcurrentG1RefineThread::sts(),
                                     g1_rem_set(),
                                     concurrent_g1_refine());
+  // 设置dirty_card_queue的函数 =》_refine_cte_cl（RefineCardTableEntryClosure）
   JavaThread::dirty_card_queue_set().set_closure(_refine_cte_cl);
 
+  // 初始化satb
   JavaThread::satb_mark_queue_set().initialize(SATB_Q_CBL_mon,
                                                SATB_Q_FL_lock,
                                                G1SATBProcessCompletedThreshold,
                                                Shared_SATB_Q_lock);
-
+  // 初始化java线程区域上的dirty_card                                       
   JavaThread::dirty_card_queue_set().initialize(DirtyCardQ_CBL_mon,
                                                 DirtyCardQ_FL_lock,
                                                 concurrent_g1_refine()->yellow_zone(),
                                                 concurrent_g1_refine()->red_zone(),
                                                 Shared_DirtyCardQ_lock);
-
+  // 初始化g1堆区域的dirty_card                                             
   if (G1DeferredRSUpdate) {
     dirty_card_queue_set().initialize(DirtyCardQ_CBL_mon,
                                       DirtyCardQ_FL_lock,
                                       -1, // never trigger processing
                                       -1, // no limit on length
                                       Shared_DirtyCardQ_lock,
-                                      &JavaThread::dirty_card_queue_set());
+                                      &JavaThread::dirty_card_queue_set());// 实际还是要传java线程区域的dirty_card
   }
 
   // Initialize the card queue set used to hold cards containing
@@ -2222,17 +2244,19 @@ jint G1CollectedHeap::initialize() {
   // G1AllocRegion class. If we don't pass an address in the reserved
   // space here, lots of asserts fire.
 
+  // 初始第一个region-》是个dummy，不具体使用
   HeapRegion* dummy_region = new_heap_region(0 /* index of bottom region */,
                                              _g1_reserved.start());
   // We'll re-use the same region whether the alloc region will
   // require BOT updates or not and, if it doesn't, then a non-young
   // region will complain that it cannot support allocations without
   // BOT updates. So we'll tag the dummy region as young to avoid that.
-  dummy_region->set_young();
+  dummy_region->set_young();// 认为是young
   // Make sure it's full.
-  dummy_region->set_top(dummy_region->end());
+  dummy_region->set_top(dummy_region->end());// 认为已满-》不会使用，所以dummy
   G1AllocRegion::setup(this, dummy_region);
 
+  // 构建_mutator_alloc_region -》使用dummy
   init_mutator_alloc_region();
 
   // Do create of the monitoring and management support so that
@@ -3738,6 +3762,7 @@ void G1CollectedHeap::gc_prologue(bool full /* Ignored */) {
   // Fill TLAB's and such
   ensure_parsability(true);
 
+  // 默认没开启
   if (G1SummarizeRSetStats && (G1SummarizeRSetStatsPeriod > 0) &&
       (total_collections() % G1SummarizeRSetStatsPeriod == 0)) {
     g1_rem_set()->print_periodic_summary_info("Before GC RS summary");
@@ -3765,6 +3790,8 @@ void G1CollectedHeap::gc_epilogue(bool full /* Ignored */) {
   Universe::update_heap_info_at_gc();
 }
 
+// 执行younggc
+// 需要stw
 HeapWord* G1CollectedHeap::do_collection_pause(size_t word_size,
                                                unsigned int gc_count_before,
                                                bool* succeeded,
@@ -3776,12 +3803,12 @@ HeapWord* G1CollectedHeap::do_collection_pause(size_t word_size,
   VM_G1IncCollectionPause op(gc_count_before,
                              word_size,
                              false, /* should_initiate_conc_mark */
-                             g1_policy()->max_pause_time_ms(),
+                             g1_policy()->max_pause_time_ms(),// 配置的最大停顿时间
                              gc_cause);
   VMThread::execute(&op);
 
   HeapWord* result = op.result();
-  bool ret_succeeded = op.prologue_succeeded() && op.pause_succeeded();
+  bool ret_succeeded = op.prologue_succeeded() && op.pause_succeeded();   
   assert(result == NULL || ret_succeeded,
          "the result should be NULL if the VM did not succeed");
   *succeeded = ret_succeeded;
@@ -3794,8 +3821,8 @@ void
 G1CollectedHeap::doConcurrentMark() {
   MutexLockerEx x(CGC_lock, Mutex::_no_safepoint_check_flag);
   if (!_cmThread->in_progress()) {
-    _cmThread->set_started();
-    CGC_lock->notify();
+    _cmThread->set_started();// 状态-》started
+    CGC_lock->notify();// 唤醒_cmThread
   }
 }
 
@@ -3946,7 +3973,7 @@ void G1CollectedHeap::log_gc_footer(double pause_time_sec) {
 bool
 G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
   assert_at_safepoint(true /* should_be_vm_thread */);
-  guarantee(!is_gc_active(), "collection is not reentrant");
+  guarantee(!is_gc_active(), "collection is not reentrant");// 意思是已有gc进行，不能触发新的
 
   if (GC_locker::check_active_before_gc()) {
     return false;
@@ -4028,10 +4055,11 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
     { // Call to jvmpi::post_class_unload_events must occur outside of active GC
       IsGCActiveMark x;
 
-      gc_prologue(false);
-      // 所以不属于fullgc
-      increment_total_collections(false /* full gc */);
-      increment_gc_time_stamp();
+      // 下面fullg参数=false -》所以不属于fullgc
+      // 下面都是gc前置操作
+      gc_prologue(false);// g1前置操作
+      increment_total_collections(false /* full gc */);// 执行gc计数+1
+      increment_gc_time_stamp();// gc发生时间
 
       verify_before_gc();
 
@@ -4042,6 +4070,8 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
       // reference processing currently works in G1.
 
       // Enable discovery in the STW reference processor
+      // 开启stw期间的引用发现？
+
       ref_processor_stw()->enable_discovery(true /*verify_disabled*/,
                                             true /*verify_no_refs*/);
 
@@ -4054,6 +4084,7 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
 
         // Forget the current alloc region (we might even choose it to be part
         // of the collection set!).
+        // 释放当前使用的region(mutator_alloc_region)
         release_mutator_alloc_region();
 
         // We should call this after we retire the mutator alloc
@@ -4076,22 +4107,28 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
         _young_list->print();
         g1_policy()->print_collection_set(g1_policy()->inc_cset_head(), gclog_or_tty);
 #endif // YOUNG_LIST_VERBOSE
+        // 这里开始正式开始gc！！！
 
+        // 记录收集开始时间
         g1_policy()->record_collection_pause_start(sample_start_time_sec);
 
-        double scan_wait_start = os::elapsedTime();
+        // 就是说这里准备开始scan
+        double scan_wait_start = os::elapsedTime();// 记录scan开始时间
         // We have to wait until the CM threads finish scanning the
         // root regions as it's the only way to ensure that all the
         // objects on them have been correctly scanned before we start
         // moving them during the GC.
+        // 就是说等待 cm线程们异步完成从root_regions开始的扫描
         bool waited = _cm->root_regions()->wait_until_scan_finished();
         double wait_time_ms = 0.0;
         if (waited) {
           double scan_wait_end = os::elapsedTime();
           wait_time_ms = (scan_wait_end - scan_wait_start) * 1000.0;
         }
-        g1_policy()->phase_times()->record_root_region_scan_wait_time(wait_time_ms);
 
+        // 记录并发标记使用的时间
+        g1_policy()->phase_times()->record_root_region_scan_wait_time(wait_time_ms);
+        // 即这里完成并发标记
 #if YOUNG_LIST_VERBOSE
         gclog_or_tty->print_cr("\nAfter recording pause start.\nYoung_list:");
         _young_list->print();
@@ -4151,7 +4188,7 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
         init_gc_alloc_regions(evacuation_info);// 初始化用于分配的region
 
         // Actually do the work...
-        // 真正执行
+        // 真正清理收集
         evacuate_collection_set(evacuation_info);
 
         // We do this to mainly verify the per-thread SATB buffers
@@ -4348,6 +4385,7 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
   // without its logging output interfering with the logging output
   // that came from the pause.
 
+  // 准备前，判断是否需要启动执行并发标记
   if (should_start_conc_mark) {
     // CAUTION: after the doConcurrentMark() call below,
     // the concurrent marking thread(s) could be running
@@ -4356,6 +4394,8 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
     // running. Note: of course, the actual marking work will
     // not start until the safepoint itself is released in
     // ConcurrentGCThread::safepoint_desynchronize().
+
+    // 启动cm线程
     doConcurrentMark();
   }
 

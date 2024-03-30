@@ -96,8 +96,48 @@
 			]
 		},
 		{
+			"path": "hotspot/src/share/vm/prims/jvm.cpp",
+			"bookmarks": [
+				{
+					"line": 2851,
+					"column": 0,
+					"label": "一般代码中创建线程"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/runtime/thread.hpp",
+			"bookmarks": [
+				{
+					"line": 260,
+					"column": 0,
+					"label": "线程变量-_tlab"
+				},
+				{
+					"line": 436,
+					"column": 0,
+					"label": "线程初始tlab---调用ThreadLocalAllocBuffer的初始化方法"
+				},
+				{
+					"line": 865,
+					"column": 0,
+					"label": "saftepoint使用的属性"
+				},
+				{
+					"line": 950,
+					"column": 0,
+					"label": "G1使用到的屏障在线程的引用"
+				}
+			]
+		},
+		{
 			"path": "hotspot/src/share/vm/runtime/thread.cpp",
 			"bookmarks": [
+				{
+					"line": 1414,
+					"column": 0,
+					"label": "JavaThread::initialize---线程初始化方法"
+				},
 				{
 					"line": 1638,
 					"column": 0,
@@ -109,7 +149,7 @@
 					"label": "java线程启动-初始化tlab"
 				},
 				{
-					"line": 1683,
+					"line": 1684,
 					"column": 0,
 					"label": "线程已无效-》不执行其他操作？"
 				},
@@ -121,10 +161,10 @@
 				{
 					"line": 3307,
 					"column": 0,
-					"label": "create_vm-创建当前jvm"
+					"label": "create_vm-创建当前jvm!!!!!!!!!!!"
 				},
 				{
-					"line": 3430,
+					"line": 3428,
 					"column": 0,
 					"label": "vm启动-初始化所有子模块！！！字节码、堆、元空间等"
 				},
@@ -137,6 +177,51 @@
 					"line": 3689,
 					"column": 0,
 					"label": "vm启动-启动偏向锁后台任务"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/memory/threadLocalAllocBuffer.cpp",
+			"bookmarks": [
+				{
+					"line": 165,
+					"column": 0,
+					"label": "记录tlab区域信息"
+				},
+				{
+					"line": 190,
+					"column": 0,
+					"label": "线程tlab-初始化"
+				},
+				{
+					"line": 214,
+					"column": 0,
+					"label": "tlab模块-初始化"
+				},
+				{
+					"line": 238,
+					"column": 0,
+					"label": "计算tlab期望空间"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/memory/threadLocalAllocBuffer.inline.hpp",
+			"bookmarks": [
+				{
+					"line": 33,
+					"column": 0,
+					"label": "allocate--线程tlab区域中分配对象"
+				},
+				{
+					"line": 53,
+					"column": 0,
+					"label": "指针碰撞-通过更新新top 完成在tlab分配对象"
+				},
+				{
+					"line": 61,
+					"column": 0,
+					"label": "compute_size--计算申请tlab空间所需大小"
 				}
 			]
 		},
@@ -161,6 +246,41 @@
 			]
 		},
 		{
+			"path": "hotspot/src/share/vm/gc_interface/collectedHeap.hpp",
+			"bookmarks": [
+				{
+					"line": 330,
+					"column": 0,
+					"label": "mem_allocate-直接堆空间中分配对象内容（不包含tlab）"
+				},
+				{
+					"line": 495,
+					"column": 0,
+					"label": "increment_total_collections-gc次数+1的方法"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_interface/collectedHeap.cpp",
+			"bookmarks": [
+				{
+					"line": 257,
+					"column": 0,
+					"label": "allocate_from_tlab_slow-----tlab区域慢速分配对象"
+				},
+				{
+					"line": 286,
+					"column": 0,
+					"label": "tlab慢速分配-申请新的tlab空间"
+				},
+				{
+					"line": 309,
+					"column": 0,
+					"label": "tlab慢速分配--在新tlab空间中申请对象空间"
+				}
+			]
+		},
+		{
 			"path": "hotspot/src/share/vm/gc_interface/collectedHeap.inline.hpp",
 			"bookmarks": [
 				{
@@ -176,7 +296,7 @@
 				{
 					"line": 127,
 					"column": 0,
-					"label": "调用tlab中对象分配"
+					"label": "1. 调用在tlab对象分配"
 				},
 				{
 					"line": 139,
@@ -187,16 +307,11 @@
 					"line": 154,
 					"column": 0,
 					"label": "分配失败后报告"
-				}
-			]
-		},
-		{
-			"path": "hotspot/src/share/vm/gc_interface/collectedHeap.hpp",
-			"bookmarks": [
+				},
 				{
-					"line": 330,
+					"line": 189,
 					"column": 0,
-					"label": "mem_allocate-堆空间中分配对象内容"
+					"label": "allocate_from_tlab-- 在tlab分配对象入口"
 				}
 			]
 		},
@@ -222,76 +337,6 @@
 					"line": 971,
 					"column": 0,
 					"label": "allocate_new_tlab-分代堆申请tlab空间"
-				}
-			]
-		},
-		{
-			"path": "hotspot/src/share/vm/gc_implementation/g1/g1CollectedHeap.cpp",
-			"bookmarks": [
-				{
-					"line": 804,
-					"column": 0,
-					"label": "hum对象-分配"
-				},
-				{
-					"line": 865,
-					"column": 0,
-					"label": "allocate_new_tlab-g1堆分配tlab空间"
-				},
-				{
-					"line": 875,
-					"column": 0,
-					"label": "g1布局堆-mem_allocate，分配对象空间"
-				},
-				{
-					"line": 1318,
-					"column": 0,
-					"label": "fullgc"
-				},
-				{
-					"line": 1380,
-					"column": 0,
-					"label": "标记为fullgc"
-				},
-				{
-					"line": 2017,
-					"column": 0,
-					"label": "humongous大小生成"
-				},
-				{
-					"line": 2043,
-					"column": 0,
-					"label": "g1堆-堆初始化"
-				},
-				{
-					"line": 2583,
-					"column": 0,
-					"label": "g1收集-collect入口"
-				},
-				{
-					"line": 3082,
-					"column": 0,
-					"label": "unsafe_max_tlab_alloc-g1的最大tlab大小"
-				},
-				{
-					"line": 3767,
-					"column": 0,
-					"label": "提交younggc"
-				},
-				{
-					"line": 3946,
-					"column": 0,
-					"label": "younggc-真正"
-				},
-				{
-					"line": 4032,
-					"column": 0,
-					"label": "标记非fullgc"
-				},
-				{
-					"line": 6502,
-					"column": 0,
-					"label": "new_mutator_alloc_region"
 				}
 			]
 		},
@@ -476,61 +521,6 @@
 			]
 		},
 		{
-			"path": "hotspot/src/share/vm/memory/threadLocalAllocBuffer.cpp",
-			"bookmarks": [
-				{
-					"line": 165,
-					"column": 0,
-					"label": "记录tlab区域信息"
-				},
-				{
-					"line": 189,
-					"column": 0,
-					"label": "线程tlab-初始化"
-				},
-				{
-					"line": 213,
-					"column": 0,
-					"label": "tlab模块-初始化"
-				},
-				{
-					"line": 237,
-					"column": 0,
-					"label": "计算tlab期望空间"
-				}
-			]
-		},
-		{
-			"path": "hotspot/src/share/vm/gc_implementation/g1/heapRegion.cpp",
-			"bookmarks": [
-				{
-					"line": 149,
-					"column": 0,
-					"label": "reigon数量-2048"
-				},
-				{
-					"line": 155,
-					"column": 0,
-					"label": "初始化reigon大小！！！"
-				},
-				{
-					"line": 157,
-					"column": 0,
-					"label": "默认下参数-生成单个region大小"
-				}
-			]
-		},
-		{
-			"path": "hotspot/src/share/vm/memory/threadLocalAllocBuffer.inline.hpp",
-			"bookmarks": [
-				{
-					"line": 33,
-					"column": 0,
-					"label": "线程tlab区域中分配对象"
-				}
-			]
-		},
-		{
 			"path": "hotspot/src/os/linux/vm/os_linux.cpp",
 			"bookmarks": [
 				{
@@ -556,21 +546,6 @@
 			]
 		},
 		{
-			"path": "hotspot/src/share/vm/gc_interface/collectedHeap.cpp",
-			"bookmarks": [
-				{
-					"line": 257,
-					"column": 0,
-					"label": "tlab区域慢速分配对象"
-				},
-				{
-					"line": 284,
-					"column": 0,
-					"label": "tlab慢速分配-申请新的tlab空间"
-				}
-			]
-		},
-		{
 			"path": "hotspot/src/share/vm/memory/collectorPolicy.cpp",
 			"bookmarks": [
 				{
@@ -579,7 +554,7 @@
 					"label": "分代堆策略-分配内存空间"
 				},
 				{
-					"line": 971,
+					"line": 972,
 					"column": 0,
 					"label": "cms-initialize_generations初始化具体分代"
 				}
@@ -609,9 +584,259 @@
 			"path": "hotspot/src/share/vm/memory/space.cpp",
 			"bookmarks": [
 				{
-					"line": 938,
+					"line": 859,
+					"column": 0,
+					"label": "par_allocate_impl--- 指定空间中无锁申请空间"
+				},
+				{
+					"line": 861,
+					"column": 0,
+					"label": "par_allocate_impl分配失败重试，直到成功或者空间不足为止"
+				},
+				{
+					"line": 871,
+					"column": 0,
+					"label": "指针碰撞申请---cmpxchg_ptr竞争cas更新top"
+				},
+				{
+					"line": 939,
 					"column": 0,
 					"label": "eden区-并行分配空间-无锁"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/runtime/synchronizer.cpp",
+			"bookmarks": [
+				{
+					"line": 166,
+					"column": 0,
+					"label": "fast_enter-- 快速加锁，偏向"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/memory/cardTableModRefBS.hpp",
+			"bookmarks": [
+				{
+					"line": 153,
+					"column": 0,
+					"label": "卡表byte_for-通过地址推算cardtable中所属的地址"
+				},
+				{
+					"line": 158,
+					"column": 0,
+					"label": "cardtable中1个下标代表512b，所以地址右移9位"
+				},
+				{
+					"line": 163,
+					"column": 0,
+					"label": "核心-》计算cardtable的下标（byte）"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/memory/generationSpec.cpp",
+			"bookmarks": [
+				{
+					"line": 39,
+					"column": 0,
+					"label": "init-創建generation對象"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/g1/vm_operations_g1.cpp",
+			"bookmarks": [
+				{
+					"line": 36,
+					"column": 0,
+					"label": "vm线程执行g1fullgc"
+				},
+				{
+					"line": 59,
+					"column": 0,
+					"label": "增量gc-》young gc"
+				},
+				{
+					"line": 155,
+					"column": 0,
+					"label": "执行saftepoint中gc"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/g1/heapRegion.cpp",
+			"bookmarks": [
+				{
+					"line": 149,
+					"column": 0,
+					"label": "reigon数量-2048"
+				},
+				{
+					"line": 155,
+					"column": 0,
+					"label": "初始化reigon大小！！！"
+				},
+				{
+					"line": 157,
+					"column": 0,
+					"label": "默认下参数-生成单个region大小"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/g1/g1CollectedHeap.cpp",
+			"bookmarks": [
+				{
+					"line": 804,
+					"column": 0,
+					"label": "hum对象-分配"
+				},
+				{
+					"line": 866,
+					"column": 0,
+					"label": "allocate_new_tlab-分配tlab空间"
+				},
+				{
+					"line": 877,
+					"column": 0,
+					"label": "mem_allocate！！！-申请对象入口"
+				},
+				{
+					"line": 1074,
+					"column": 0,
+					"label": "申请大对象空间入口-attempt_allocation_humongous"
+				},
+				{
+					"line": 1335,
+					"column": 0,
+					"label": "do_collection-执行fullgc"
+				},
+				{
+					"line": 1397,
+					"column": 0,
+					"label": "标记为fullgc"
+				},
+				{
+					"line": 2034,
+					"column": 0,
+					"label": "初始化-humongous对象大小生成-》region大小的一半"
+				},
+				{
+					"line": 2060,
+					"column": 0,
+					"label": "g1堆-堆初始化"
+				},
+				{
+					"line": 2118,
+					"column": 0,
+					"label": "堆初始创建_rem_set--- "
+				},
+				{
+					"line": 2181,
+					"column": 0,
+					"label": "堆初始创建_cm --- 并发标记的对象"
+				},
+				{
+					"line": 2190,
+					"column": 0,
+					"label": "堆初始化- 预留from card缓存空间-》remset"
+				},
+				{
+					"line": 2209,
+					"column": 0,
+					"label": "堆初始化- satb初始化"
+				},
+				{
+					"line": 2214,
+					"column": 0,
+					"label": "堆初始化- dirty_card初始化"
+				},
+				{
+					"line": 2247,
+					"column": 0,
+					"label": "堆初始化-创建dummy region （认为是满的）"
+				},
+				{
+					"line": 2259,
+					"column": 0,
+					"label": "堆初始-指定_mutator_alloc_region"
+				},
+				{
+					"line": 2608,
+					"column": 0,
+					"label": "g1收集-collect入口"
+				},
+				{
+					"line": 3107,
+					"column": 0,
+					"label": "unsafe_max_tlab_alloc-g1的最大tlab大小"
+				},
+				{
+					"line": 3795,
+					"column": 0,
+					"label": "do_collection_pause-younggc执行"
+				},
+				{
+					"line": 3974,
+					"column": 0,
+					"label": "younggc-真正"
+				},
+				{
+					"line": 4059,
+					"column": 0,
+					"label": "younggc-gc前置执行"
+				},
+				{
+					"line": 4060,
+					"column": 0,
+					"label": "执行gc前，gc计数+1"
+				},
+				{
+					"line": 4109,
+					"column": 0,
+					"label": "younggc-开始真正收集过程"
+				},
+				{
+					"line": 4115,
+					"column": 0,
+					"label": "younggc-开始并发标记"
+				},
+				{
+					"line": 4122,
+					"column": 0,
+					"label": "进入等待cm线程完成scan"
+				},
+				{
+					"line": 4130,
+					"column": 0,
+					"label": "younggc-并发标记已完成"
+				},
+				{
+					"line": 6544,
+					"column": 0,
+					"label": "new_mutator_alloc_region"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/g1/g1CollectedHeap.hpp",
+			"bookmarks": [
+				{
+					"line": 235,
+					"column": 0,
+					"label": "g1_humongous对象大小变量"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/g1/g1CollectedHeap.inline.hpp",
+			"bookmarks": [
+				{
+					"line": 63,
+					"column": 0,
+					"label": "attempt_allocation-申请普通对象空间"
 				}
 			]
 		},
@@ -641,37 +866,62 @@
 			]
 		},
 		{
-			"path": "hotspot/src/share/vm/gc_implementation/g1/vm_operations_g1.cpp",
+			"path": "hotspot/src/share/vm/gc_implementation/g1/vm_operations_g1.hpp",
 			"bookmarks": [
 				{
-					"line": 36,
+					"line": 77,
 					"column": 0,
-					"label": "vm线程执行g1fullgc"
+					"label": "需要stw的g1增量gc执行事件"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/runtime/vmThread.cpp",
+			"bookmarks": [
+				{
+					"line": 411,
+					"column": 0,
+					"label": "VMThread::loop()--vm线程一直后台循环的方法"
 				},
 				{
-					"line": 59,
+					"line": 414,
 					"column": 0,
-					"label": "g1的增量gc-》young gc"
+					"label": "vm线程从队列等待获取op"
+				},
+				{
+					"line": 440,
+					"column": 0,
+					"label": "等f待VMOperationQueue_lock有事件"
+				},
+				{
+					"line": 470,
+					"column": 0,
+					"label": "调用op的evaluate_at_safepoint"
+				},
+				{
+					"line": 482,
+					"column": 0,
+					"label": "vm线程准备执行op的操作"
+				},
+				{
+					"line": 594,
+					"column": 0,
+					"label": "VMThread::execute--执行提交的操作"
 				}
 			]
 		},
 		{
-			"path": "hotspot/src/share/vm/runtime/synchronizer.cpp",
+			"path": "hotspot/src/share/vm/gc_implementation/g1/concurrentMarkThread.cpp",
 			"bookmarks": [
 				{
-					"line": 166,
+					"line": 78,
 					"column": 0,
-					"label": "fast_enter-- 快速加锁，偏向"
-				}
-			]
-		},
-		{
-			"path": "hotspot/src/share/vm/runtime/thread.hpp",
-			"bookmarks": [
+					"label": "ConcurrentMarkThread::run-- 并发标记线程主函数"
+				},
 				{
-					"line": 436,
+					"line": 331,
 					"column": 0,
-					"label": "调用初始化tlab空间"
+					"label": "ConcurrentMarkThread线程等待唤醒"
 				}
 			]
 		}

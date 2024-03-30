@@ -88,7 +88,7 @@ void ConcurrentMarkThread::run() {
 
   while (!_should_terminate) {
     // wait until started is set.
-    sleepBeforeNextCycle();
+    sleepBeforeNextCycle();// 等待唤醒
     {
       ResourceMark rm;
       HandleMark   hm;
@@ -327,7 +327,8 @@ void ConcurrentMarkThread::sleepBeforeNextCycle() {
   assert(!in_progress(), "should have been cleared");
 
   MutexLockerEx x(CGC_lock, Mutex::_no_safepoint_check_flag);
-  while (!started()) {
+  while (!started()) {// 正常还需要started，才能退出循环等待
+    // 等待唤醒
     CGC_lock->wait(Mutex::_no_safepoint_check_flag);
   }
   set_in_progress();

@@ -863,9 +863,9 @@ class JavaThread: public Thread {
   AsyncRequests _special_runtime_exit_condition; // Enum indicating pending async. request
   oop           _pending_async_exception;
 
-  // Safepoint support
+  // Safepoint support, safepoint使用
  public:                                         // Expose _thread_state for SafeFetchInt()
-  volatile JavaThreadState _thread_state;
+  volatile JavaThreadState _thread_state;// 线程状态
  private:
   ThreadSafepointState *_safepoint_state;        // Holds information about a thread during a safepoint
   address               _saved_exception_pc;     // Saved pc of instruction where last implicit exception happened
@@ -949,16 +949,20 @@ class JavaThread: public Thread {
 
 #if INCLUDE_ALL_GCS
   // Support for G1 barriers
+  // 下面的多个是g1使用的屏障barrier，
+  // XXQueue当前线程的对应类型屏障, xxQueueSet就是对应类型屏障的多个queue集合
 
+  // satb
   ObjPtrQueue _satb_mark_queue;          // Thread-local log for SATB barrier.
   // Set of all such queues.
   static SATBMarkQueueSet _satb_mark_queue_set;
 
+  // 脏卡
   DirtyCardQueue _dirty_card_queue;      // Thread-local log for dirty cards.
   // Set of all such queues.
   static DirtyCardQueueSet _dirty_card_queue_set;
 
-  void flush_barrier_queues();
+  void flush_barrier_queues();// 刷屏障queue
 #endif // INCLUDE_ALL_GCS
 
   friend class VMThread;

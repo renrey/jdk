@@ -274,8 +274,10 @@ HeapWord* CollectedHeap::allocate_from_tlab_slow(KlassHandle klass, Thread* thre
   // 计算需要申请的tlab空间！！！
   size_t new_tlab_size = thread->tlab().compute_size(size);
 
+  // 清理之前的tlab空间
   thread->tlab().clear_before_allocation();
 
+  // 无法申请tlab空间，直接返回
   if (new_tlab_size == 0) {
     return NULL;
   }
@@ -303,7 +305,8 @@ HeapWord* CollectedHeap::allocate_from_tlab_slow(KlassHandle klass, Thread* thre
     Copy::fill_to_words(obj + hdr_size, new_tlab_size - hdr_size, badHeapWordVal);
 #endif // ASSERT
   }
-  // 线程的tlab信息更新
+  // 线程的tlab信息更新，且在新tlab空间中申请对象空间
+  // 传入top参数就是申请操作
   thread->tlab().fill(obj, obj + size, new_tlab_size);
   return obj;
 }

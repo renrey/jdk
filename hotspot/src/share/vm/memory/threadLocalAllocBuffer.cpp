@@ -187,6 +187,7 @@ void ThreadLocalAllocBuffer::initialize(HeapWord* start,
   invariants();
 }
 
+// 实际就是计算tlab期望空间、一些属性初始化
 void ThreadLocalAllocBuffer::initialize() {
   initialize(NULL,                    // start
              NULL,                    // top

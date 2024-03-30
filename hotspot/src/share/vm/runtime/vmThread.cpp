@@ -369,6 +369,7 @@ void VMThread::evaluate_operation(VM_Operation* op) {
 
     EventExecuteVMOperation event;
 
+    // 执行evaluate
     op->evaluate();
 
     if (event.should_commit()) {
@@ -407,7 +408,7 @@ void VMThread::evaluate_operation(VM_Operation* op) {
   }
 }
 
-
+// vm线程一直循环的方法
 void VMThread::loop() {
   assert(_cur_vm_operation == NULL, "no current one should be executing");
 
@@ -435,6 +436,7 @@ void VMThread::loop() {
 
       while (!should_terminate() && _cur_vm_operation == NULL) {
         // wait with a timeout to guarantee safepoints at regular intervals
+        // 等待VMOperationQueue_lock有可消费
         bool timedout =
           VMOperationQueue_lock->wait(Mutex::_no_safepoint_check_flag,
                                       GuaranteedSafepointInterval);
@@ -460,12 +462,14 @@ void VMThread::loop() {
           #endif
           SafepointSynchronize::end();
         }
+        // 取出op操作
         _cur_vm_operation = _vm_queue->remove_next();
 
         // If we are at a safepoint we will evaluate all the operations that
         // follow that also require a safepoint
         if (_cur_vm_operation != NULL &&
-            _cur_vm_operation->evaluate_at_safepoint()) {
+            _cur_vm_operation->evaluate_at_safepoint()) {// 执行时需要stw
+          // _vm_queue取出1个safepoint事件
           safepoint_ops = _vm_queue->drain_at_safepoint_priority();
         }
       }
@@ -496,18 +500,23 @@ void VMThread::loop() {
         _vm_queue->set_drain_list(safepoint_ops); // ensure ops can be scanned
 
         SafepointSynchronize::begin();// 触发safepoint
+
+        // 执行操作-》evaluate()
         evaluate_operation(_cur_vm_operation);
         // now process all queued safepoint ops, iteratively draining
         // the queue until there are none left
+        // 本次op执行完，把剩下的safepoint也执行
         do {
           _cur_vm_operation = safepoint_ops;
           if (_cur_vm_operation != NULL) {
+            // 就是把_vm_queue里的safepoint 操作都执行了
             do {
               // evaluate_operation deletes the op object so we have
               // to grab the next op now
+              // 按链表执行
               VM_Operation* next = _cur_vm_operation->next();
               _vm_queue->set_drain_list(next);
-              evaluate_operation(_cur_vm_operation);
+              evaluate_operation(_cur_vm_operation);// evaluate执行
               _cur_vm_operation = next;
               if (PrintSafepointStatistics) {
                 SafepointSynchronize::inc_vmop_coalesced_count();
@@ -586,6 +595,7 @@ void VMThread::loop() {
 void VMThread::execute(VM_Operation* op) {
   Thread* t = Thread::current();// 当前线程t
 
+  // 提交线程不是vm线程
   if (!t->is_VM_thread()) {
     SkipGCALot sgcalot(t);    // avoid re-entrant attempts to gc-a-lot
     // JavaThread or WatcherThread
@@ -598,11 +608,12 @@ void VMThread::execute(VM_Operation* op) {
     }
 
     // New request from Java thread, evaluate prologue
+    // doit_prologue执行失败，直接返回-》失败
     if (!op->doit_prologue()) {
-      return;   // op was cancelled
+      return;   // op was cancelled，这次事件操作不执行
     }
 
-    // Setup VM_operations for execution
+    // Setup VM_operations for execution，保存提交线程
     op->set_calling_thread(t, Thread::get_priority(t));
 
     // It does not make sense to execute the epilogue, if the VM operation object is getting
@@ -623,7 +634,7 @@ void VMThread::execute(VM_Operation* op) {
       VMOperationQueue_lock->lock_without_safepoint_check();//提交队列需要先加锁
       bool ok = _vm_queue->add(op); // 提交到队列
     op->set_timestamp(os::javaTimeMillis());
-      VMOperationQueue_lock->notify();
+      VMOperationQueue_lock->notify();// 通知消费
       VMOperationQueue_lock->unlock();// 解锁
       // VM_Operation got skipped
       if (!ok) {
@@ -638,17 +649,20 @@ void VMThread::execute(VM_Operation* op) {
       // Wait for completion of request (non-concurrent)
       // Note: only a JavaThread triggers the safepoint check when locking
       MutexLocker mu(VMOperationRequest_lock);
-      // 加锁等待完成
+      // 加锁等待op执行完成
       while(t->vm_operation_completed_count() < ticket) {
           // 非java线程无需safepoint check
         VMOperationRequest_lock->wait(!t->is_Java_thread());
       }
     }
 
+    // op执行完成后doit_epilogue
     if (execute_epilog) {
       op->doit_epilogue();
     }
   } else {
+    // vm线程提交任务·
+
     // invoked by VM thread; usually nested VM operation
     assert(t->is_VM_thread(), "must be a VM thread");
     VM_Operation* prev_vm_operation = vm_operation();

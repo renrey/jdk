@@ -91,6 +91,7 @@ class GC_locker: public AllStatic {
     assert(SafepointSynchronize::is_at_safepoint(), "only read at safepoint");
     return is_active_internal();
   }
+  // _needs_gc代表当前堆已满
   static bool needs_gc()       { return _needs_gc;                        }
 
   // Shorthand

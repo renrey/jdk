@@ -50,7 +50,7 @@ inline HeapWord* ThreadLocalAllocBuffer::allocate(size_t size) {
     // This addition is safe because we know that top is
     // at least size below end, so the add can't wrap.
 
-    // 更新top-》加上本次大小
+    // 更新top-》加上本次大小！！！
     set_top(obj + size);
 
     invariants();
