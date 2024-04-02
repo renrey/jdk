@@ -509,6 +509,7 @@ class ReferenceProcessor : public CHeapObj<mtGC> {
   bool discover_reference(oop obj, ReferenceType rt);
 
   // Process references found during GC (called by the garbage collector)
+  // 對可達（存活）對象進行處理
   ReferenceProcessorStats
   process_discovered_references(BoolObjectClosure*           is_alive,
                                 OopClosure*                  keep_alive,

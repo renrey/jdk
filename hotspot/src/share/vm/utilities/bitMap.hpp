@@ -145,6 +145,9 @@ class BitMap VALUE_OBJ_CLASS_SPEC {
 
   bool at(idx_t index) const {
     verify_index(index);
+    // 判断index位置那个bit是否为1
+    // word_addr：找到index所在bitmap，bit_mask: index位1，其他0
+    // &计算：判断是否index位的bit是否1
     return (*word_addr(index) & bit_mask(index)) != 0;
   }
 

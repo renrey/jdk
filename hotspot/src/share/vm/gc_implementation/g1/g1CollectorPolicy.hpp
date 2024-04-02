@@ -576,7 +576,8 @@ private:
   // initial-mark work.
   volatile bool _during_initial_mark_pause;
 
-  bool _last_young_gc;
+  // record_concurrent_mark_cleanup_completed才会更新true
+  bool _last_young_gc;// 代表最新执行完成的gc是否young
 
   // This set of variables tracks the collector efficiency, in order to
   // determine whether we should initiate a new marking.

@@ -641,7 +641,7 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   // only whether there more than 0.  Use of this method helps
   // reduce the occurrence of ParallelGCThreads to uses where the
   // actual number may be germane.
-  static bool use_parallel_gc_threads() { return ParallelGCThreads > 0; }
+  static bool use_parallel_gc_threads() { return ParallelGCThreads > 0; }//默认false
 
   /////////////// Unit tests ///////////////
 

@@ -123,8 +123,10 @@ inline void G1RootRegionScanClosure::do_oop_nv(T* p) {
   T heap_oop = oopDesc::load_heap_oop(p);
   if (!oopDesc::is_null(heap_oop)) {
     oop obj = oopDesc::decode_heap_oop_not_null(heap_oop);
-    HeapRegion* hr = _g1h->heap_region_containing((HeapWord*) obj);
+    // 通过地址获取region
+    HeapRegion* hr = _g1h->heap_region_containing((HeapWord*) obj); 
     if (hr != NULL) {
+      // 把这个对象对应区域region标记-》灰
       _cm->grayRoot(obj, obj->size(), _worker_id, hr);
     }
   }

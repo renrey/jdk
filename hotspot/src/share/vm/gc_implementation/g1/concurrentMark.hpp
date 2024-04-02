@@ -98,6 +98,8 @@ class CMBitMapRO VALUE_OBJ_CLASS_SPEC {
     return _bmStartWord + (offset << _shifter);
   }
   size_t heapWordToOffset(HeapWord* addr) const {
+    // addr距离开始地址的偏移量 右移（/）
+    // 实际判断bitmap对应位置的bit位是否1
     return pointer_delta(addr, _bmStartWord) >> _shifter;
   }
   int heapWordDiffToOffsetDiff(size_t diff) const;
@@ -105,7 +107,7 @@ class CMBitMapRO VALUE_OBJ_CLASS_SPEC {
   // The argument addr should be the start address of a valid object
   HeapWord* nextObject(HeapWord* addr) {
     oop obj = (oop) addr;
-    HeapWord* res =  addr + obj->size();
+    HeapWord* res =  addr + obj->size();// 当前开始地址+对象大小 -》后一个对象的开始地址
     assert(offsetToHeapWord(heapWordToOffset(res)) == res, "sanity");
     return res;
   }
@@ -322,6 +324,13 @@ class YoungList;
 // Currently, we only support root region scanning once (at the start
 // of the marking cycle) and the root regions are all the survivor
 // regions populated during the initial-mark pause.
+
+// root region就是那些在mark开始时不空的region，且在停顿时可以被收集掉，
+// 在停顿时，不会copy那些被显示mark的对象 ，而是对root region进行扫描并mark当中可达对象
+// 根据satb的假设，在marking中只会遍历对象一次，所以只要在下次停顿前，
+// 完成这些（对root region）scan, 就可以把root region的对象copy，无需再mark他们or做其他操作
+//    当前只支持root region（在marking阶段开始时）扫描一次，
+// 且在初始mark阶段，所有root region都是survivor region生成的
 class CMRootRegions VALUE_OBJ_CLASS_SPEC {
 private:
   YoungList*           _young_list;
@@ -441,7 +450,7 @@ protected:
   // this is set by any task, when an overflow on the global data
   // structures is detected.
   volatile bool           _has_overflown;
-  // true: marking is concurrent, false: we're in remark
+  // true: marking is concurrent, false: we're in remark，并发阶段，false在重标记阶段
   volatile bool           _concurrent;
   // set at the end of a Full GC so that marking aborts
   volatile bool           _has_aborted;
@@ -453,18 +462,19 @@ protected:
   // This is true from the very start of concurrent marking until the
   // point when all the tasks complete their work. It is really used
   // to determine the points between the end of concurrent marking and
-  // time of remark.
+  // time of remark.代表真正的并发标记
   volatile bool           _concurrent_marking_in_progress;
 
   // verbose level
   CMVerboseLevel          _verbose_level;
 
+  // 可通过时间更新来找到对应阶段代码
   // All of these times are in ms.
-  NumberSeq _init_times;
-  NumberSeq _remark_times;
-  NumberSeq   _remark_mark_times;
-  NumberSeq   _remark_weak_ref_times;
-  NumberSeq _cleanup_times;
+  NumberSeq _init_times;// 初始
+  NumberSeq _remark_times;// 重标记总时间
+  NumberSeq   _remark_mark_times;// 重标记阶段，标记（也叫fianlmark）的时间
+  NumberSeq   _remark_weak_ref_times;// 处理弱引用的时间
+  NumberSeq _cleanup_times;// 清理时间
   double    _total_counting_time;
   double    _total_rs_scrub_time;
 
@@ -583,10 +593,12 @@ protected:
   }
 
   ForceOverflowSettings* force_overflow() {
+    // 并发标记阶段
     if (concurrent()) {
-      return force_overflow_conc();
+      return force_overflow_conc();// 默认false
     } else {
-      return force_overflow_stw();
+      // remark 重标记阶段
+      return force_overflow_stw();// 默认false
     }
   }
 
@@ -1010,11 +1022,11 @@ private:
   // the oop closure used for iterations over oops
   G1CMOopClosure*             _cm_oop_closure;
 
-  // the region this task is scanning, NULL if we're not scanning any
+  // the region this task is scanning, NULL if we're not scanning any，当前正在scan的region，NULL代表没有需要扫描的
   HeapRegion*                 _curr_region;
-  // the local finger of this task, NULL if we're not scanning a region
+  // the local finger of this task, NULL if we're not scanning a region NULL代表没在扫描region
   HeapWord*                   _finger;
-  // limit of the region this task is scanning, NULL if we're not scanning one
+  // limit of the region this task is scanning, NULL if we're not scanning one 当前正在scan的region的上限，NULL即没有扫描
   HeapWord*                   _region_limit;
 
   // the number of words this task has scanned

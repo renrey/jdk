@@ -978,6 +978,7 @@ void G1CollectorPolicy::record_collection_pause_end(double pause_time_ms, Evacua
 
   last_pause_included_initial_mark = during_initial_mark_pause();
   if (last_pause_included_initial_mark) {
+    // 初始标记时间默认==0
     record_concurrent_mark_init_end(0.0);
   } else if (need_to_start_conc_mark("end of GC")) {
     // Note: this might have already been set, if during the last
@@ -1051,14 +1052,20 @@ void G1CollectorPolicy::record_collection_pause_end(double pause_time_ms, Evacua
     new_in_marking_window = true;
     new_in_marking_window_im = true;
   }
-
+  // 最近完成的gc是young gc需要判断下次的stw gc是否mixed
+  // 也就是现在执行的是younggc
   if (_last_young_gc) {
+    // 实际只有record_concurrent_mark_cleanup_completed才会更新true（清理完成才更新）
+    // false: 1. 进来这里又变false 2. 执行fullgc 3. 初始是false
+    // 所以实际进入情况：在完成young gc并发收集完成更新标志，调用这个后置处理方法会进入
+
     // This is supposed to to be the "last young GC" before we start
     // doing mixed GCs. Here we decide whether to start mixed GCs or not.
 
     if (!last_pause_included_initial_mark) {
       if (next_gc_should_be_mixed("start mixed GCs",
                                   "do not start mixed GCs")) {
+
         set_gcs_are_young(false);
       }
     } else {
@@ -1069,10 +1076,12 @@ void G1CollectorPolicy::record_collection_pause_end(double pause_time_ms, Evacua
     _last_young_gc = false;
   }
 
+  // 执行了mixed gc
   if (!_last_gc_was_young) {
     // This is a mixed GC. Here we decide whether to continue doing
     // mixed GCs or not.
 
+    // 只有认为下次不是mixed，才会变回young gc
     if (!next_gc_should_be_mixed("continue mixed GCs",
                                  "do not continue mixed GCs")) {
       set_gcs_are_young(true);
@@ -1495,6 +1504,7 @@ G1CollectorPolicy::decide_on_conc_mark_initiation() {
   // will set it here if we have to. However, it should be cleared by
   // the end of the pause (it's only set for the duration of an
   // initial-mark pause).
+  // _during_initial_mark_pause正常不应该是true
   assert(!during_initial_mark_pause(), "pre-condition");
 
   if (initiate_conc_mark_if_possible()) {
@@ -1508,8 +1518,10 @@ G1CollectorPolicy::decide_on_conc_mark_initiation() {
       // it has completed the last one. So we can go ahead and
       // initiate a new cycle.
 
+      // 设置当前初始标记！！！-》_during_initial_mark_pause=true
       set_during_initial_mark_pause();
       // We do not allow mixed GCs during marking.
+      // marking时不支持mixed gc，所以设成young
       if (!gcs_are_young()) {
         set_gcs_are_young(true);
         ergo_verbose0(ErgoMixedGCs,
@@ -1834,6 +1846,7 @@ void G1CollectorPolicy::add_region_to_incremental_cset_lhs(HeapRegion* hr) {
   // Do the 'common' stuff
   add_region_to_incremental_cset_common(hr);
 
+  // 新增
   // Add the region at the left hand side
   hr->set_next_in_collection_set(_inc_cset_head);
   if (_inc_cset_head == NULL) {
@@ -1872,6 +1885,7 @@ double G1CollectorPolicy::reclaimable_bytes_perc(size_t reclaimable_bytes) {
 bool G1CollectorPolicy::next_gc_should_be_mixed(const char* true_action_str,
                                                 const char* false_action_str) {
   CollectionSetChooser* cset_chooser = _collectionSetChooser;
+  // cset 空不执行
   if (cset_chooser->is_empty()) {
     ergo_verbose0(ErgoMixedGCs,
                   false_action_str,
@@ -1880,9 +1894,10 @@ bool G1CollectorPolicy::next_gc_should_be_mixed(const char* true_action_str,
   }
 
   // Is the amount of uncollected reclaimable space above G1HeapWastePercent?
-  size_t reclaimable_bytes = cset_chooser->remaining_reclaimable_bytes();
+  size_t reclaimable_bytes = cset_chooser->remaining_reclaimable_bytes();// 通过cset获取可回收字节数
   double reclaimable_perc = reclaimable_bytes_perc(reclaimable_bytes);
-  double threshold = (double) G1HeapWastePercent;
+  double threshold = (double) G1HeapWastePercent;// 默认10
+  // 可回收的百分比 <= G1HeapWastePercent(10) ,不需要mixed
   if (reclaimable_perc <= threshold) {
     ergo_verbose4(ErgoMixedGCs,
               false_action_str,
@@ -1905,6 +1920,7 @@ bool G1CollectorPolicy::next_gc_should_be_mixed(const char* true_action_str,
                 cset_chooser->remaining_regions(),
                 reclaimable_bytes,
                 reclaimable_perc, threshold);
+  // 超过10%，需要              
   return true;
 }
 
@@ -1972,7 +1988,7 @@ void G1CollectorPolicy::finalize_cset(double target_pause_time_ms, EvacuationInf
                 ergo_format_ms("target pause time"),
                 _pending_cards, base_time_ms, time_remaining_ms, target_pause_time_ms);
 
-  // 
+  // gcs_are_young是young，代表本次是younggc，否则mixed
   _last_gc_was_young = gcs_are_young() ? true : false;
 
   if (_last_gc_was_young) {
@@ -2000,6 +2016,7 @@ void G1CollectorPolicy::finalize_cset(double target_pause_time_ms, EvacuationInf
   // 清理指向suvivor
   young_list->clear_survivors();
 
+  // 更新收集set的链表头（实际上就是当前已被使用的region）
   _collection_set = _inc_cset_head;
   _collection_set_bytes_used_before = _inc_cset_bytes_used_before;
   time_remaining_ms = MAX2(time_remaining_ms - _inc_cset_predicted_elapsed_time_ms, 0.0);
@@ -2198,12 +2215,13 @@ void TraceGen0TimeData::record_end_collection(double pause_time_ms, G1GCPhaseTim
   }
 }
 
+// young gc次数+1
 void TraceGen0TimeData::increment_young_collection_count() {
   if(TraceGen0Time) {
     ++_young_pause_num;
   }
 }
-
+// mixed gc次数+1
 void TraceGen0TimeData::increment_mixed_collection_count() {
   if(TraceGen0Time) {
     ++_mixed_pause_num;
@@ -2262,6 +2280,7 @@ void TraceGen0TimeData::print() const {
   print_summary_sd("   Yields", &_all_yield_times_ms);
 }
 
+// g1记录fullgc耗时
 void TraceGen1TimeData::record_full_collection(double full_gc_time_ms) {
   if (TraceGen1Time) {
     _all_full_gc_times.add(full_gc_time_ms);

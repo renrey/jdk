@@ -38,9 +38,10 @@
 template <class T>
 inline HeapRegion*
 G1CollectedHeap::heap_region_containing(const T addr) const {
-  HeapRegion* hr = _hrs.addr_to_region((HeapWord*) addr);
+  HeapRegion* hr = _hrs.addr_to_region((HeapWord*) addr);//
   // hr can be null if addr in perm_gen
   if (hr != NULL && hr->continuesHumongous()) {
+    // 大对象则是对应大对象region（多个）的第一个
     hr = hr->humongous_start_region();
   }
   return hr;
@@ -200,6 +201,7 @@ G1CollectedHeap::set_evacuation_failure_alot_for_current_gc() {
     const bool during_im = g1_policy()->during_initial_mark_pause();
     const bool during_marking = mark_in_progress();
 
+    // 失败情况
     _evacuation_failure_alot_for_current_gc &=
       evacuation_failure_alot_for_gc_type(gcs_are_young,
                                           during_im,

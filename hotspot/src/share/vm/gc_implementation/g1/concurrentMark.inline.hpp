@@ -176,7 +176,7 @@ inline bool ConcurrentMark::par_mark_and_count(oop obj,
                                                HeapRegion* hr,
                                                uint worker_id) {
   HeapWord* addr = (HeapWord*)obj;
-  if (_nextMarkBitMap->parMark(addr)) {
+  if (_nextMarkBitMap->parMark(addr)) {// 对addr开始的位置在bitMap标记
     MemRegion mr(addr, word_size);
     count_region(mr, hr, worker_id);
     return true;
@@ -424,8 +424,10 @@ inline void ConcurrentMark::grayRoot(oop obj, size_t word_size,
                  word_size * HeapWordSize, hr->capacity(),
                  HR_FORMAT_PARAMS(hr)));
 
+  // 所以其实就是在bitMap上把obj的所属的位置置为1！！！-》变灰
   if (addr < hr->next_top_at_mark_start()) {
-    if (!_nextMarkBitMap->isMarked(addr)) {
+    if (!_nextMarkBitMap->isMarked(addr)) {// 未在MarkBitMap标记这个obj的地址（对bitmap中对应这个obj空间的bit =0，1就是已标记）
+      // 执行标记
       par_mark_and_count(obj, word_size, hr, worker_id);
     }
   }

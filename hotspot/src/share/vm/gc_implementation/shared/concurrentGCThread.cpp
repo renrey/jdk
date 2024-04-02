@@ -43,10 +43,11 @@ ConcurrentGCThread::ConcurrentGCThread() :
   _sts.initialize();
 };
 
+// safepoint挂起sts线程
 void ConcurrentGCThread::safepoint_synchronize() {
   _sts.suspend_all();
 }
-
+// safepoint恢复所有sts线程
 void ConcurrentGCThread::safepoint_desynchronize() {
   _sts.resume_all();
 }
@@ -106,6 +107,7 @@ void SuspendibleThreadSet::initialize_work() {
 
 void SuspendibleThreadSet::join() {
   initialize();
+  // 没safepoint才会执行，safepoint则是挂起等待st恢复
   MutexLockerEx x(_m, Mutex::_no_safepoint_check_flag);
   while (_async_stop) _m->wait(Mutex::_no_safepoint_check_flag);
   _async++;

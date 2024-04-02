@@ -304,8 +304,8 @@ class HeapRegion: public G1OffsetTableContigSpace {
   // have been allocated in this part since the last mark phase.
   // "prev" is the top at the start of the last completed marking.
   // "next" is the top at the start of the in-progress marking (if any.)
-  HeapWord* _prev_top_at_mark_start;
-  HeapWord* _next_top_at_mark_start;
+  HeapWord* _prev_top_at_mark_start; // 上一个完成标记对象的开始地址
+  HeapWord* _next_top_at_mark_start;// 正在标记的对象开始地址
   // If a collection pause is in progress, this is the top at the start
   // of that pause.
 

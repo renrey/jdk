@@ -398,7 +398,7 @@ CMRootRegions::CMRootRegions() :
   _should_abort(false),  _next_survivor(NULL) { }
 
 void CMRootRegions::init(G1CollectedHeap* g1h, ConcurrentMark* cm) {
-  _young_list = g1h->young_list();
+  _young_list = g1h->young_list();// 引用g1堆的younglist
   _cm = cm;
 }
 
@@ -406,8 +406,12 @@ void CMRootRegions::prepare_for_scan() {
   assert(!scan_in_progress(), "pre-condition");
 
   // Currently, only survivors can be root regions.
+  // 只有suvivor region是root region
   assert(_next_survivor == NULL, "pre-condition");
+  // suvivor指针关联到当前young list上的suvivor
   _next_survivor = _young_list->first_survivor_region();
+  // 用于告诉告诉cm线程需要扫描root region
+  // 如果没suvivor region，则cm线程不会扫描
   _scan_in_progress = (_next_survivor != NULL);
   _should_abort = false;
 }
@@ -454,7 +458,8 @@ void CMRootRegions::scan_finished() {
 
   {
     MutexLockerEx x(RootRegionScan_lock, Mutex::_no_safepoint_check_flag);
-    _scan_in_progress = false;
+    _scan_in_progress = false;// 更新root扫描标记-》无须扫描
+    // 通知唤醒等待线程-》已完成扫描
     RootRegionScan_lock->notify_all();
   }
 }
@@ -464,6 +469,7 @@ bool CMRootRegions::wait_until_scan_finished() {
 
   {
     MutexLockerEx x(RootRegionScan_lock, Mutex::_no_safepoint_check_flag);
+    // 等待并发扫描root region 完成
     while (scan_in_progress()) {
       RootRegionScan_lock->wait(Mutex::_no_safepoint_check_flag);
     }
@@ -561,6 +567,7 @@ ConcurrentMark::ConcurrentMark(G1CollectedHeap* g1h, ReservedSpace heap_rs) :
   SATBMarkQueueSet& satb_qs = JavaThread::satb_mark_queue_set();
   satb_qs.set_buffer_size(G1SATBBufferSize);
 
+  // 初始配置root 级region
   _root_regions.init(_g1h, this);
 
   if (ConcGCThreads > ParallelGCThreads) {
@@ -569,6 +576,8 @@ ConcurrentMark::ConcurrentMark(G1CollectedHeap* g1h, ReservedSpace heap_rs) :
             ConcGCThreads, ParallelGCThreads);
     return;
   }
+
+  // 默认0
   if (ParallelGCThreads == 0) {
     // if we are not running with any parallel GC threads we will not
     // spawn any marking threads either
@@ -577,6 +586,8 @@ ConcurrentMark::ConcurrentMark(G1CollectedHeap* g1h, ReservedSpace heap_rs) :
     _sleep_factor             =     0.0;
     _marking_task_overhead    =     1.0;
   } else {
+    // 配置了并行gc线程数
+
     if (!FLAG_IS_DEFAULT(ConcGCThreads) && ConcGCThreads > 0) {
       // Note: ConcGCThreads has precedence over G1MarkingOverheadPercent
       // if both are set
@@ -630,6 +641,7 @@ ConcurrentMark::ConcurrentMark(G1CollectedHeap* g1h, ReservedSpace heap_rs) :
 #endif
 
     guarantee(parallel_marking_threads() > 0, "peace of mind");
+    // 创建并发worker
     _parallel_workers = new FlexibleWorkGang("G1 Parallel Marking Threads",
          _max_parallel_marking_threads, false, true);
     if (_parallel_workers == NULL) {
@@ -938,7 +950,7 @@ void ConcurrentMark::checkpointRootsInitialPost() {
   // threads to have SATB queues with active set to false.
   satb_mq_set.set_active_all_threads(true, /* new active value */
                                      false /* expected_active */);
-
+  // 准备扫描前更新_root_regions相关属性
   _root_regions.prepare_for_scan();
 
   // update_g1_committed() will be called at the end of an evac pause
@@ -1037,7 +1049,7 @@ void ConcurrentMark::enter_second_sync_barrier(uint worker_id) {
 
 #ifndef PRODUCT
 void ForceOverflowSettings::init() {
-  _num_remaining = G1ConcMarkForceOverflow;
+  _num_remaining = G1ConcMarkForceOverflow;// 默认0
   _force = false;
   update();
 }
@@ -1047,6 +1059,7 @@ void ForceOverflowSettings::update() {
     _num_remaining -= 1;
     _force = true;
   } else {
+    // 默认0，所以是false
     _force = false;
   }
 }
@@ -1074,20 +1087,22 @@ public:
 
     double start_vtime = os::elapsedVTime();
 
+    // safepoint等待判断，非st停顿才会执行
     ConcurrentGCThread::stsJoin();
 
     assert(worker_id < _cm->active_tasks(), "invariant");
     CMTask* the_task = _cm->task(worker_id);
     the_task->record_start_time();
-    if (!_cm->has_aborted()) {
+    if (!_cm->has_aborted()) {// 不是full gc
       do {
         double start_vtime_sec = os::elapsedVTime();
         double start_time_sec = os::elapsedTime();
         double mark_step_duration_ms = G1ConcMarkStepDurationMillis;
 
-        the_task->do_marking_step(mark_step_duration_ms,
+        // 真正调用并发标记
+        the_task->do_marking_step(mark_step_duration_ms,// 停顿时间
                                   true  /* do_termination */,
-                                  false /* is_serial*/);
+                                  false /* is_serial*/);// 本身就是并行的，无需参数配置
 
         double end_time_sec = os::elapsedTime();
         double end_vtime_sec = os::elapsedVTime();
@@ -1118,6 +1133,7 @@ public:
 #endif
       } while (!_cm->has_aborted() && the_task->has_aborted());
     }
+    // 此时，标记完成end
     the_task->record_end_time();
     guarantee(!the_task->has_aborted() || _cm->has_aborted(), "invariant");
 
@@ -1170,15 +1186,18 @@ void ConcurrentMark::scanRootRegion(HeapRegion* hr, uint worker_id) {
   const uintx interval = PrefetchScanIntervalInBytes;
   HeapWord* curr = hr->bottom();
   const HeapWord* end = hr->top();
+  // 遍历region内的对象
   while (curr < end) {
     Prefetch::read(curr, interval);
     oop obj = oop(curr);
+    // 每个obj对象执行cl函数（G1RootRegionScanClosure）
     int size = obj->oop_iterate(&cl);
     assert(size == obj->size(), "sanity");
     curr += size;
   }
 }
 
+// 扫描root region -》就是初始标记
 class CMRootRegionScanTask : public AbstractGangTask {
 private:
   ConcurrentMark* _cm;
@@ -1193,9 +1212,11 @@ public:
 
     CMRootRegions* root_regions = _cm->root_regions();
     HeapRegion* hr = root_regions->claim_next();
+    // 就是扫描所有root region
     while (hr != NULL) {
+      // 具体扫描单个root region！！！ 
       _cm->scanRootRegion(hr, worker_id);
-      hr = root_regions->claim_next();
+      hr = root_regions->claim_next();// 下一个
     }
   }
 };
@@ -1204,23 +1225,28 @@ void ConcurrentMark::scanRootRegions() {
   // scan_in_progress() will have been set to true only if there was
   // at least one root region to scan. So, if it's false, we
   // should not attempt to do any further work.
+  // 只有在有1个以上root region才会进行扫描
   if (root_regions()->scan_in_progress()) {
     _parallel_marking_threads = calc_parallel_marking_threads();
     assert(parallel_marking_threads() <= max_parallel_marking_threads(),
            "Maximum number of marking threads exceeded");
     uint active_workers = MAX2(1U, parallel_marking_threads());
 
+    // 扫描任务对象
     CMRootRegionScanTask task(this);
     if (use_parallel_marking_threads()) {
       _parallel_workers->set_active_workers((int) active_workers);
       _parallel_workers->run_task(&task);
-    } else {
-      task.work(0);
+    } else {// 默认没配置并行gc线程数，所以走单线程
+      task.work(0);// 单线程执行任务
     }
 
     // It's possible that has_aborted() is true here without actually
     // aborting the survivor scan earlier. This is OK as it's
     // mainly used for sanity checking.
+    // 扫描root_region 完成
+    // 喚醒等待完成的主線程，
+    // 且_scan_in_progress=false，代表目前cm线程暂时不会继续循环执行扫描root region
     root_regions()->scan_finished();
   }
 }
@@ -1245,7 +1271,8 @@ void ConcurrentMark::markFromRoots() {
 
   // Parallel task terminator is set in "set_concurrency_and_phase()"
   set_concurrency_and_phase(active_workers, true /* concurrent */);
-
+  
+  // 并发标记（root已标记）的扫描任务
   CMConcurrentMarkingTask markingTask(this, cmThread());
   if (use_parallel_marking_threads()) {
     _parallel_workers->set_active_workers((int)active_workers);
@@ -1284,6 +1311,7 @@ void ConcurrentMark::checkpointRootsFinal(bool clear_all_soft_refs) {
   G1CollectorPolicy* g1p = g1h->g1_policy();
   g1p->record_concurrent_mark_remark_start();
 
+  // ---- 重標記start  ----
   double start = os::elapsedTime();
 
   checkpointRootsFinalWork();
@@ -1343,7 +1371,9 @@ void ConcurrentMark::checkpointRootsFinal(bool clear_all_soft_refs) {
   _remark_mark_times.add((mark_work_end - start) * 1000.0);
   _remark_weak_ref_times.add((now - mark_work_end) * 1000.0);
   _remark_times.add((now - start) * 1000.0);
-
+  
+  // ---- 重標記end  ----
+  
   g1p->record_concurrent_mark_remark_end();
 
   G1CMIsAliveClosure is_alive(g1h);
@@ -1720,7 +1750,7 @@ class FinalCountDataUpdateClosure: public CMCountDataClosureBase {
     // Mark the allocated-since-marking portion...
     if (ntams < top) {
       // This definitely means the region has live objects.
-      set_bit_for_region(hr);
+      set_bit_for_region(hr);// 存活对像的region 标记bitmap( 标记region非空)
 
       // Now set the bits in the card bitmap for [ntams, top)
       BitMap::idx_t start_idx = _cm->card_bitmap_index_for(ntams);
@@ -1742,11 +1772,12 @@ class FinalCountDataUpdateClosure: public CMCountDataClosureBase {
       assert(start_idx < _card_bm->size(),
              err_msg("oob: start_idx=  "SIZE_FORMAT", bitmap size= "SIZE_FORMAT,
                      start_idx, _card_bm->size()));
-
+      // card表的bitmap设置               
       _cm->set_card_bitmap_range(_card_bm, start_idx, end_idx, true /* is_par */);
     }
 
     // Set the bit for the region if it contains live data
+    // 有存活对象的region 设置bitmap标记
     if (hr->next_marked_bytes() > 0) {
       set_bit_for_region(hr);
     }
@@ -1787,7 +1818,7 @@ public:
     FinalCountDataUpdateClosure final_update_cl(_g1h,
                                                 _actual_region_bm,
                                                 _actual_card_bm);
-
+    // 遍历region 执行   FinalCountDataUpdateClosure                                             
     if (G1CollectedHeap::use_parallel_gc_threads()) {
       _g1h->heap_region_par_iterate_chunked(&final_update_cl,
                                             worker_id,
@@ -1983,6 +2014,7 @@ void ConcurrentMark::cleanup() {
   G1CollectorPolicy* g1p = G1CollectedHeap::heap()->g1_policy();
   g1p->record_concurrent_mark_cleanup_start();
 
+  // ------ 清理 start ----
   double start = os::elapsedTime();
 
   HeapRegionRemSet::reset_for_cleanup_tasks();
@@ -2011,6 +2043,7 @@ void ConcurrentMark::cleanup() {
     g1_par_count_task.work(0);
   }
 
+  // 默认关闭
   if (VerifyDuringGC) {
     // Verify that the counting data accumulated during marking matches
     // that calculated by walking the marking bitmap.
@@ -2106,7 +2139,8 @@ void ConcurrentMark::cleanup() {
 
   // Statistics.
   double end = os::elapsedTime();
-  _cleanup_times.add((end - start) * 1000.0);
+  _cleanup_times.add((end - start) * 1000.0);// 清理时间记录
+  // ------- 清理 end ----------
 
   if (G1Log::fine()) {
     g1h->print_size_transition(gclog_or_tty,
@@ -2121,6 +2155,7 @@ void ConcurrentMark::cleanup() {
 
   // We need to make this be a "collection" so any collection pause that
   // races with it goes around and waits for completeCleanup to finish.
+  // 增加1次young gc次数
   g1h->increment_total_collections();
 
   // We reclaimed old regions so we should calculate the sizes to make
@@ -3274,6 +3309,7 @@ void ConcurrentMark::print_summary_info() {
                             (double)_cleanup_times.num()
                            : 0.0));
   }
+  // 程序认为的stw总时间 = 初始+重+清理
   gclog_or_tty->print_cr("  Total stop_world time = %8.2f s.",
                          (_init_times.sum() + _remark_times.sum() +
                           _cleanup_times.sum())/1000.0);
@@ -3347,6 +3383,7 @@ void CMTask::scan_object(oop obj) {
   size_t obj_size = obj->size();
   _words_scanned += obj_size;
 
+  // 继续遍历里面对象指针的引用
   obj->oop_iterate(_cm_oop_closure);
   statsOnly( ++_objs_scanned );
   check_limits();
@@ -3365,6 +3402,7 @@ public:
     _task(task), _cm(cm), _nextMarkBitMap(nextMarkBitMap) { }
 
   bool do_bit(size_t offset) {
+    // 通过bitmap偏移量转成具体地址
     HeapWord* addr = _nextMarkBitMap->offsetToHeapWord(offset);
     assert(_nextMarkBitMap->isMarked(addr), "invariant");
     assert( addr < _cm->finger(), "invariant");
@@ -3375,6 +3413,7 @@ public:
     // We move that task's local finger along.
     _task->move_finger_to(addr);
 
+    // 遍历对象引用的对象，递归执行扫描函数
     _task->scan_object(oop(addr));
     // we only partially drain the local queue and global stack
     _task->drain_local_queue(true);
@@ -3431,10 +3470,10 @@ void CMTask::setup_for_region(HeapRegion* hr) {
 
 void CMTask::update_region_limit() {
   HeapRegion* hr            = _curr_region;
-  HeapWord* bottom          = hr->bottom();
-  HeapWord* limit           = hr->next_top_at_mark_start();
+  HeapWord* bottom          = hr->bottom();// reigon尾部地址
+  HeapWord* limit           = hr->next_top_at_mark_start();// 正在（准备）进行标记的对象的开始地址
 
-  if (limit == bottom) {
+  if (limit == bottom) {// 代表扫描已到底
     if (_cm->verbose_low()) {
       gclog_or_tty->print_cr("[%u] found an empty region "
                              "["PTR_FORMAT", "PTR_FORMAT")",
@@ -3445,7 +3484,7 @@ void CMTask::update_region_limit() {
     // iteration that will follow this will not do anything.
     // (this is not a condition that holds when we set the region up,
     // as the region is not supposed to be empty in the first place)
-    _finger = bottom;
+    _finger = bottom;// 变成底部地址（下次扫描开始）
   } else if (limit >= _region_limit) {
     assert(limit >= _finger, "peace of mind");
   } else {
@@ -3478,7 +3517,7 @@ void CMTask::giveup_current_region() {
 void CMTask::clear_region_fields() {
   // Values for these three fields that indicate that we're not
   // holding on to a region.
-  _curr_region   = NULL;
+  _curr_region   = NULL;// 当前region也清空？
   _finger        = NULL;
   _region_limit  = NULL;
 }
@@ -3557,7 +3596,9 @@ void CMTask::regular_clock_call() {
   // During the regular clock call we do the following
 
   // (1) If an overflow has been flagged, then we abort.
+  // 
   if (_cm->has_overflown()) {
+    // 内存溢出，gc终止
     set_has_aborted();
     return;
   }
@@ -3569,6 +3610,7 @@ void CMTask::regular_clock_call() {
 
   // (2) If marking has been aborted for Full GC, then we also abort.
   if (_cm->has_aborted()) {
+    // 已经触发gc，终止本次gc
     set_has_aborted();
     statsOnly( ++_aborted_cm_aborted );
     return;
@@ -3611,8 +3653,10 @@ void CMTask::regular_clock_call() {
 
   // (5) We check whether we've reached our time quota. If we have,
   // then we abort.
+  // !!! 判断已用时间是否超过目标时间
   double elapsed_time_ms = curr_time_ms - _start_time_ms;
   if (elapsed_time_ms > _time_target_ms) {
+    // 超过目标时间，终止本次gc
     set_has_aborted();
     _has_timed_out = true;
     statsOnly( ++_aborted_timed_out );
@@ -3622,6 +3666,7 @@ void CMTask::regular_clock_call() {
   // (6) Finally, we check whether there are enough completed STAB
   // buffers available for processing. If there are, we abort.
   SATBMarkQueueSet& satb_mq_set = JavaThread::satb_mark_queue_set();
+  // =是否有足够的已完成satb空间，没有则终止
   if (!_draining_satb_buffers && satb_mq_set.process_completed_buffers()) {
     if (_cm->verbose_low()) {
       gclog_or_tty->print_cr("[%u] aborting to deal with pending SATB buffers",
@@ -3837,6 +3882,7 @@ void CMTask::drain_satb_buffers() {
 
   CMObjectClosure oc(this);
   SATBMarkQueueSet& satb_mq_set = JavaThread::satb_mark_queue_set();
+  // 设置执行的函数
   if (G1CollectedHeap::use_parallel_gc_threads()) {
     satb_mq_set.set_par_closure(_worker_id, &oc);
   } else {
@@ -3845,6 +3891,7 @@ void CMTask::drain_satb_buffers() {
 
   // This keeps claiming and applying the closure to completed buffers
   // until we run out of buffers or we need to abort.
+  // 对已完成的buffer执行函数，直到没有buffer了or终止
   if (G1CollectedHeap::use_parallel_gc_threads()) {
     while (!has_aborted() &&
            satb_mq_set.par_apply_closure_to_completed_buffer(_worker_id)) {
@@ -3865,6 +3912,7 @@ void CMTask::drain_satb_buffers() {
     }
   }
 
+  // 让satb遍历执行函数CMObjectClosure
   if (!concurrent() && !has_aborted()) {
     // We should only do this during remark.
     if (G1CollectedHeap::use_parallel_gc_threads()) {
@@ -3880,6 +3928,7 @@ void CMTask::drain_satb_buffers() {
          concurrent() ||
          satb_mq_set.completed_buffers_num() == 0, "invariant");
 
+  // 清理satb使用的函数       
   if (G1CollectedHeap::use_parallel_gc_threads()) {
     satb_mq_set.set_par_closure(_worker_id, NULL);
   } else {
@@ -4101,8 +4150,8 @@ void CMTask::do_marking_step(double time_target_ms,
   // Set up the bitmap and oop closures. Anything that uses them is
   // eventually called from this method, so it is OK to allocate these
   // statically.
-  CMBitMapClosure bitmap_closure(this, _cm, _nextMarkBitMap);
-  G1CMOopClosure  cm_oop_closure(_g1h, _cm, this);
+  CMBitMapClosure bitmap_closure(this, _cm, _nextMarkBitMap); // bitmap执行
+  G1CMOopClosure  cm_oop_closure(_g1h, _cm, this);// 对象执行
   set_cm_oop_closure(&cm_oop_closure);
 
   if (_cm->has_overflown()) {
@@ -4117,13 +4166,18 @@ void CMTask::do_marking_step(double time_target_ms,
   // look at SATB buffers before the next invocation of this method.
   // If enough completed SATB buffers are queued up, the regular clock
   // will abort this task so that it restarts.
+  // 首先拿出所有可用的satb  buffer，在下次调用这个方法之前，都不会关注satb
+  // 如果有足够的已完成的sate buffer，常规时钟会终止本次任务，以达到重启的目的
   drain_satb_buffers();
   // ...then partially drain the local queue and the global stack
   drain_local_queue(true);
   drain_global_stack(true);
 
+  // 其实就是利用local_queue跟global_stack，实际递归遍历
+
+  // 通过最后循环条件，不继续循环：1. 没有region需要遍历 2. 被其他更新aborted标志
   do {
-    if (!has_aborted() && _curr_region != NULL) {
+    if (!has_aborted() && _curr_region != NULL) {// 正常验证（可能随时被中断、还有被窃取任务）
       // This means that we're already holding on to a region.
       assert(_finger != NULL, "if region is not NULL, then the finger "
              "should not be NULL either");
@@ -4134,13 +4188,15 @@ void CMTask::do_marking_step(double time_target_ms,
       // that we do not iterate over a region of the heap that
       // contains garbage (update_region_limit() will also move
       // _finger to the start of the region if it is found empty).
-      update_region_limit();
+      update_region_limit();// 更新扫描的下标
       // We will start from _finger not from the start of the region,
       // as we might be restarting this task after aborting half-way
       // through scanning this region. In this case, _finger points to
       // the address where we last found a marked object. If this is a
       // fresh region, _finger points to start().
-      MemRegion mr = MemRegion(_finger, _region_limit);
+      // 从_finger开始的原因是可能通过中断后重试方式（一个对象占多个region），这种指向上一个对象的开始
+      // 如果全新的region，则是region的开始地址
+      MemRegion mr = MemRegion(_finger, _region_limit);// 封装扫描位置
 
       if (_cm->verbose_low()) {
         gclog_or_tty->print_cr("[%u] we're scanning part "
@@ -4161,24 +4217,40 @@ void CMTask::do_marking_step(double time_target_ms,
       // Otherwise, let's iterate over the bitmap of the part of the region
       // that is left.
       // If the iteration is successful, give up the region.
+
+      // 下面的giveup_current_region()、regular_clock_call()组合就是当前region已被扫描完（包含对引用的）了
+      // giveup_current_region用于表表示当前region已被扫描完
+      // regular_clock_call用于判断整个gc是否终止，一些条件（内存泄漏），去更新aborted
+
+
+      // 对应位置是空的，放弃当前region——》停止继续扫描
       if (mr.is_empty()) {
-        giveup_current_region();
+        giveup_current_region();// 清理下标属性，也会清理cur_region引用？-》停止扫描
         regular_clock_call();
+      // 大对象，且本次扫描是同一个对象的region里的第二个region(即当前大对象占用2个region)
+      // 在这里才标记，但也把大对象也当做gc root
       } else if (_curr_region->isHumongous() && mr.start() == _curr_region->bottom()) {
         if (_nextMarkBitMap->isMarked(mr.start())) {
           // The object is marked - apply the closure
+          // 标记当前大对象
           BitMap::idx_t offset = _nextMarkBitMap->heapWordToOffset(mr.start());
+          // 对这个大对象的，执行递归扫描引用对象
           bitmap_closure.do_bit(offset);
         }
         // Even if this task aborted while scanning the humongous object
         // we can (and should) give up the current region.
-        giveup_current_region();
+        giveup_current_region();// 放弃cur_region-》停止扫描
         regular_clock_call();
+      // 正常操作  
+      // 对bitmap每个bit代表的位置都执行递归扫描  
       } else if (_nextMarkBitMap->iterate(&bitmap_closure, mr)) {
-        giveup_current_region();
+        // 进来代表这个region的对象都被扫描完了
+        giveup_current_region();// 放弃当前region？-》停止扫描
         regular_clock_call();
       } else {
-        assert(has_aborted(), "currently the only way to do so");
+        // 上面的遍历bit执行扫描返回false-》原因aborted=true
+        // 即遍历中被终止了，没有全部遍历完
+        assert(has_aborted(), "currently the only way to do so");// 也是判断终止
         // The only way to abort the bitmap iteration is to return
         // false from the do_bit() method. However, inside the
         // do_bit() method we move the _finger to point to the
@@ -4194,15 +4266,21 @@ void CMTask::do_marking_step(double time_target_ms,
         // bitmap knows by how much we need to move it as it knows its
         // granularity).
         assert(_finger < _region_limit, "invariant");
+        // 指向_finger（当前扫描到）的后一个对象
         HeapWord* new_finger = _nextMarkBitMap->nextObject(_finger);
         // Check if bitmap iteration was aborted while scanning the last object
+        // 就是校验终止时，扫描完没有
         if (new_finger >= _region_limit) {
+          // 超过当前region的末尾，即不在当前region，放弃cur（当前region已扫描完）》终止扫描
           giveup_current_region();
+          // 不调用regular_clock_call是因为，程序被终止，所以不会restart
         } else {
+          // 没超过当前region（即还在同一个region），更新_finger，下一次（gc）扫描时，本次gc已被终止不会循环
           move_finger_to(new_finger);
         }
       }
     }
+    // 上面就是对1个region里所有对象的引用对象执行了扫描
     // At this point we have either completed iterating over the
     // region we were holding on to, or we have aborted.
 
@@ -4215,6 +4293,9 @@ void CMTask::do_marking_step(double time_target_ms,
     // return NULL with potentially more regions available for
     // claiming and why we have to check out_of_regions() to determine
     // whether we're done or not.
+
+    // 未终止且cur==null-》正常扫描完了1个region
+    // 正常扫描完了1个region,且还有region
     while (!has_aborted() && _curr_region == NULL && !_cm->out_of_regions()) {
       // We are going to try to claim a new region. We should have
       // given up on the previous one.
@@ -4225,6 +4306,7 @@ void CMTask::do_marking_step(double time_target_ms,
       if (_cm->verbose_low()) {
         gclog_or_tty->print_cr("[%u] trying to claim a new region", _worker_id);
       }
+      // 获取下一个要扫描的region
       HeapRegion* claimed_region = _cm->claim_region(_worker_id);
       if (claimed_region != NULL) {
         // Yes, we managed to claim one
@@ -4236,6 +4318,7 @@ void CMTask::do_marking_step(double time_target_ms,
                                  _worker_id, claimed_region);
         }
 
+        // 更新_curr_region！！！
         setup_for_region(claimed_region);
         assert(_curr_region == claimed_region, "invariant");
       }
@@ -4244,6 +4327,7 @@ void CMTask::do_marking_step(double time_target_ms,
       // block of empty regions. So we need to call the regular clock
       // method once round the loop to make sure it's called
       // frequently enough.
+      // 就是判断是否gc是结束了，做一些aborted更新处理
       regular_clock_call();
     }
 
@@ -4251,8 +4335,10 @@ void CMTask::do_marking_step(double time_target_ms,
       assert(_cm->out_of_regions(),
              "at this point we should be out of regions");
     }
-  } while ( _curr_region != NULL && !has_aborted());
+  } while ( _curr_region != NULL && !has_aborted());// 条件代表：gc还能正常执行且还有region需要扫描
 
+  // 这里应该是扫描完需要的region -》当前worker线程扫描任务已完成
+  // 而且未发生full gc
   if (!has_aborted()) {
     // We cannot check whether the global stack is empty, since other
     // tasks might be pushing objects to it concurrently.
@@ -4265,7 +4351,7 @@ void CMTask::do_marking_step(double time_target_ms,
 
     // Try to reduce the number of available SATB buffers so that
     // remark has less work to do.
-    drain_satb_buffers();
+    drain_satb_buffers();// 又清理satb
   }
 
   // Since we've done everything else, we can now totally drain the
@@ -4274,6 +4360,8 @@ void CMTask::do_marking_step(double time_target_ms,
   drain_global_stack(false);
 
   // Attempt at work stealing from other task's queues.
+  // 并行的是可以，窃取别的线程任务：目的加快速度
+  // 就是当前worker执行完成，尝试从别的任务队列切steal执行-》协助执行
   if (do_stealing && !has_aborted()) {
     // We have not aborted. This means that we have finished all that
     // we could. Let's try to do some stealing...
@@ -4290,7 +4378,7 @@ void CMTask::do_marking_step(double time_target_ms,
     while (!has_aborted()) {
       oop obj;
       statsOnly( ++_steal_attempts );
-
+      // 执行窃取
       if (_cm->try_stealing(_worker_id, &_hash_seed, obj)) {
         if (_cm->verbose_medium()) {
           gclog_or_tty->print_cr("[%u] stolen "PTR_FORMAT" successfully",
@@ -4301,6 +4389,7 @@ void CMTask::do_marking_step(double time_target_ms,
 
         assert(_nextMarkBitMap->isMarked((HeapWord*) obj),
                "any stolen object should be marked");
+        // 执行扫描obj！！！
         scan_object(obj);
 
         // And since we're towards the end, let's totally drain the
@@ -4313,12 +4402,14 @@ void CMTask::do_marking_step(double time_target_ms,
     }
   }
 
+  // 窃取队列也完成，即当前线程的扫描工作都完成了
   // If we are about to wrap up and go into termination, check if we
   // should raise the overflow flag.
   if (do_termination && !has_aborted()) {
+    // 默认false，应该不会进
     if (_cm->force_overflow()->should_force()) {
-      _cm->set_has_overflown();
-      regular_clock_call();
+      _cm->set_has_overflown();// 更新overflow
+      regular_clock_call();// 由于上面更新的overflow，aborted=true-》终止
     }
   }
 
@@ -4356,6 +4447,7 @@ void CMTask::do_marking_step(double time_target_ms,
           // we need to set this to false before the next
           // safepoint. This way we ensure that the marking phase
           // doesn't observe any more heap expansions.
+          // 在下次safepoint之前设置false，这样marking阶段不会观测到heap增长
           _cm->clear_concurrent_marking_in_progress();
         }
       }

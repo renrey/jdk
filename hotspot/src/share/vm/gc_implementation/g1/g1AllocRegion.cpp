@@ -103,6 +103,7 @@ void G1AllocRegion::retire(bool fill_up) {
     assert(alloc_region->used() >= _used_bytes_before,
            ar_ext_msg(this, "invariant"));
     size_t allocated_bytes = alloc_region->used() - _used_bytes_before;
+    // 退役region
     retire_region(alloc_region, allocated_bytes);
     _used_bytes_before = 0;
     // 更新指针到新的region
@@ -179,6 +180,7 @@ void G1AllocRegion::set(HeapRegion* alloc_region) {
 HeapRegion* G1AllocRegion::release() {
   trace("releasing");
   HeapRegion* alloc_region = _alloc_region;
+  // 執行region退休（survior放入younglist的survivor鏈錶、old放入old_）
   retire(false /* fill_up */);
   assert(_alloc_region == _dummy_region,
          ar_ext_msg(this, "post-condition of retire()"));

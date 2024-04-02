@@ -110,7 +110,9 @@ void ConcurrentMarkThread::run() {
           gclog_or_tty->print_cr("[GC concurrent-root-region-scan-start]");
         }
 
-        _cm->scanRootRegions();
+        // 1. 初始标记
+        // 执行扫描root region
+        _cm->scanRootRegions();// 只有主线程更新_scan_in_progress=true才会真正执行
 
         double scan_end = os::elapsedTime();
         if (G1Log::fine()) {
@@ -131,7 +133,9 @@ void ConcurrentMarkThread::run() {
       int iter = 0;
       do {
         iter++;
-        if (!cm()->has_aborted()) {
+        // 2. 并发标记
+        if (!cm()->has_aborted()) {// 就是没发生full gc（发生full gc这个是true）
+          // 没发生full gc ，执行gc root扫描
           _cm->markFromRoots();
         }
 
@@ -153,6 +157,8 @@ void ConcurrentMarkThread::run() {
                                       mark_end_sec - mark_start_sec);
           }
 
+          // 3. 重标记
+          // 提交remark任务-》重标记
           CMCheckpointRootsFinalClosure final_cl(_cm);
           VM_CGC_Operation op(&final_cl, "GC remark", true /* needs_pll */);
           VMThread::execute(&op);
@@ -183,7 +189,7 @@ void ConcurrentMarkThread::run() {
           jlong sleep_time_ms = mmu_tracker->when_ms(now, cleanup_prediction_ms);
           os::sleep(current_thread, sleep_time_ms, false);
         }
-
+        // 4. 清理
         CMCleanUp cl_cl(_cm);
         VM_CGC_Operation op(&cl_cl, "GC cleanup", false /* needs_pll */);
         VMThread::execute(&op);

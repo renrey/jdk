@@ -45,6 +45,7 @@ VM_G1CollectForAllocation::VM_G1CollectForAllocation(
 void VM_G1CollectForAllocation::doit() {
   G1CollectedHeap* g1h = G1CollectedHeap::heap();
   GCCauseSetter x(g1h, _gc_cause);
+  // 如果空间不足，可能触发fullGC
   _result = g1h->satisfy_failed_allocation(_word_size, &_pause_succeeded);
   assert(_result == NULL || _pause_succeeded,
          "if we get back a result, the pause should have succeeded");
@@ -54,6 +55,7 @@ void VM_G1CollectFull::doit() {
   G1CollectedHeap* g1h = G1CollectedHeap::heap();
   GCCauseSetter x(g1h, _gc_cause);
   // 先fullgc，软引用不清
+  // 这里调用应该就是外部真调用gc接口的触发
   g1h->do_full_collection(false /* clear_all_soft_refs */);
 }
 
