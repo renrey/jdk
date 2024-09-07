@@ -73,6 +73,7 @@ public:
   // collection without removing it from the CSet chooser.
   HeapRegion* peek() {
     HeapRegion* res = NULL;
+    // 通过_curr_index 
     if (_curr_index < _length) {
       res = regions_at(_curr_index);
       assert(res != NULL,

@@ -206,7 +206,7 @@ G1CollectorPolicy::G1CollectorPolicy() :
   _phase_times = new G1GCPhaseTimes(_parallel_gc_threads);
 
   int index = MIN2(_parallel_gc_threads - 1, 7);
-
+  // 默认值有8种
   _rs_length_diff_seq->add(rs_length_diff_defaults[index]);
   _cost_per_card_ms_seq->add(cost_per_card_ms_defaults[index]);
   _young_cards_per_entry_ratio_seq->add(
@@ -816,7 +816,7 @@ void G1CollectorPolicy::record_full_collection_end() {
   set_gcs_are_young(true);
   _last_young_gc = false;
   clear_initiate_conc_mark_if_possible();
-  clear_during_initial_mark_pause();
+  clear_during_initial_mark_pause();// 重置初始标记标志
   _in_marking_window = false;
   _in_marking_window_im = false;
 
@@ -869,9 +869,9 @@ void G1CollectorPolicy::record_collection_pause_start(double start_time_sec) {
 
 void G1CollectorPolicy::record_concurrent_mark_init_end(double
                                                    mark_init_elapsed_time_ms) {
-  _during_marking = true;
+  _during_marking = true;// 更新成并发标记
   assert(!initiate_conc_mark_if_possible(), "we should have cleared it by now");
-  clear_during_initial_mark_pause();
+  clear_during_initial_mark_pause();// 重置初始标记标志
   _cur_mark_stop_world_time_ms = mark_init_elapsed_time_ms;
 }
 
@@ -1065,7 +1065,7 @@ void G1CollectorPolicy::record_collection_pause_end(double pause_time_ms, Evacua
     if (!last_pause_included_initial_mark) {
       if (next_gc_should_be_mixed("start mixed GCs",
                                   "do not start mixed GCs")) {
-
+        // 下次是mixed GC 标志                            
         set_gcs_are_young(false);
       }
     } else {
@@ -1110,7 +1110,7 @@ void G1CollectorPolicy::record_collection_pause_end(double pause_time_ms, Evacua
       }
     }
 
-    if (_max_rs_lengths > 0) {
+    if (_max_rs_lengths > 0) {// 本次执行扫描的card数量/ rs空间大小
       double cards_per_entry_ratio =
         (double) cards_scanned / (double) _max_rs_lengths;
       if (_last_gc_was_young) {
@@ -1307,6 +1307,8 @@ void G1CollectorPolicy::adjust_concurrent_refinement(double update_rs_time,
 double
 G1CollectorPolicy::predict_base_elapsed_time_ms(size_t pending_cards,
                                                 size_t scanned_cards) {
+  // 1. rs update脏卡 -》每个脏卡操作
+  // 2. rs scan 需要扫描多少个card
   return
     predict_rs_update_time_ms(pending_cards) +
     predict_rs_scan_time_ms(scanned_cards) +
@@ -1315,8 +1317,10 @@ G1CollectorPolicy::predict_base_elapsed_time_ms(size_t pending_cards,
 
 double
 G1CollectorPolicy::predict_base_elapsed_time_ms(size_t pending_cards) {
+  // 每个region rs平均长度
   size_t rs_length = predict_rs_length_diff();
   size_t card_num;
+  // card
   if (gcs_are_young()) {
     card_num = predict_young_card_num(rs_length);
   } else {
@@ -1327,6 +1331,7 @@ G1CollectorPolicy::predict_base_elapsed_time_ms(size_t pending_cards) {
 
 size_t G1CollectorPolicy::predict_bytes_to_copy(HeapRegion* hr) {
   size_t bytes_to_copy;
+  // 已标记录，看存活对象总大小
   if (hr->is_marked())
     bytes_to_copy = hr->max_live_bytes();
   else {
@@ -1338,27 +1343,38 @@ size_t G1CollectorPolicy::predict_bytes_to_copy(HeapRegion* hr) {
   return bytes_to_copy;
 }
 
+// 预测1个region执行gc的时间-》可看到总体操作流程
 double
 G1CollectorPolicy::predict_region_elapsed_time_ms(HeapRegion* hr,
                                                   bool for_young_gc) {
+  // 获取当前region的remset的占用大小
   size_t rs_length = hr->rem_set()->occupied();
   size_t card_num;
 
   // Predicting the number of cards is based on which type of GC
   // we're predicting for.
+  // 1. 获取card数量 -》根据gc类型，来确定扫描的rs card
   if (for_young_gc) {
+    // ygc的只需要扫描young的card
     card_num = predict_young_card_num(rs_length);
+    // 通过rs长度推需要扫描的card数 ，基础基于之前扫描card/rs长度
+    // 这里预测card数量 -》remset的占用大小 * 每个b需要扫描的card
   } else {
     card_num = predict_non_young_card_num(rs_length);
   }
+  // copy大小
   size_t bytes_to_copy = predict_bytes_to_copy(hr);
 
+  // 预测耗时 = rs 扫描时间 + copy时间
+  // 1. 先扫描rs
+  // 2. copy
   double region_elapsed_time_ms =
     predict_rs_scan_time_ms(card_num) +
     predict_object_copy_time_ms(bytes_to_copy);
 
   // The prediction of the "other" time for this region is based
   // upon the region type and NOT the GC type.
+  // 额外需要时间 
   if (hr->is_young()) {
     region_elapsed_time_ms += predict_young_other_time_ms(1);
   } else {
@@ -1506,13 +1522,14 @@ G1CollectorPolicy::decide_on_conc_mark_initiation() {
   // initial-mark pause).
   // _during_initial_mark_pause正常不应该是true
   assert(!during_initial_mark_pause(), "pre-condition");
-
+  // 有无提交 并发标记操作
   if (initiate_conc_mark_if_possible()) {
     // We had noticed on a previous pause that the heap occupancy has
     // gone over the initiating threshold and we should start a
     // concurrent marking cycle. So we might initiate one.
 
     bool during_cycle = _g1->concurrent_mark()->cmThread()->during_cycle();
+    // cm线程未进入cycle执行周期，初始话对应属性
     if (!during_cycle) {
       // The concurrent marking thread is not "during a cycle", i.e.,
       // it has completed the last one. So we can go ahead and
@@ -1681,8 +1698,10 @@ void G1CollectorPolicy::add_old_region_to_cset(HeapRegion* hr) {
 
   assert(!hr->in_collection_set(), "should not already be in the CSet");
   hr->set_in_collection_set(true);
+  // 头插全局链表
   hr->set_next_in_collection_set(_collection_set);
   _collection_set = hr;
+
   _collection_set_bytes_used_before += hr->used();
   _g1->register_region_with_in_cset_fast_test(hr);
   size_t rs_length = hr->rem_set()->occupied();
@@ -1751,7 +1770,7 @@ void G1CollectorPolicy::add_to_incremental_cset_info(HeapRegion* hr, size_t rs_l
   // VM thread, or in-between safepoints by mutator threads (when
   // retiring the current allocation region) or a concurrent
   // refine thread (RSet sampling).
-
+  // heap回收预测耗时
   double region_elapsed_time_ms = predict_region_elapsed_time_ms(hr, gcs_are_young());
   size_t used_bytes = hr->used();
   _inc_cset_recorded_rs_lengths += rs_length;
@@ -1808,6 +1827,7 @@ void G1CollectorPolicy::add_region_to_incremental_cset_common(HeapRegion* hr) {
   // by the Young List sampling code.
 
   size_t rs_length = hr->rem_set()->occupied();
+  // 把region加入到 cset候选
   add_to_incremental_cset_info(hr, rs_length);
 
   HeapWord* hr_end = hr->end();
@@ -1846,7 +1866,7 @@ void G1CollectorPolicy::add_region_to_incremental_cset_lhs(HeapRegion* hr) {
   // Do the 'common' stuff
   add_region_to_incremental_cset_common(hr);
 
-  // 新增
+  // 新增=头插
   // Add the region at the left hand side
   hr->set_next_in_collection_set(_inc_cset_head);
   if (_inc_cset_head == NULL) {
@@ -1936,6 +1956,7 @@ uint G1CollectorPolicy::calc_min_old_cset_length() {
   // that the result is the same during all mixed GCs that follow a cycle.
 
   const size_t region_num = (size_t) _collectionSetChooser->length();
+  // 8
   const size_t gc_num = (size_t) MAX2(G1MixedGCCountTarget, (uintx) 1);
   size_t result = region_num / gc_num;
   // emulate ceiling
@@ -1964,20 +1985,25 @@ uint G1CollectorPolicy::calc_max_old_cset_length() {
 
 
 void G1CollectorPolicy::finalize_cset(double target_pause_time_ms, EvacuationInfo& evacuation_info) {
+  // 开始选择young cset
   double young_start_time_sec = os::elapsedTime();
 
   YoungList* young_list = _g1->young_list();
-  finalize_incremental_cset_building();
+  finalize_incremental_cset_building();// 清空属性
 
   guarantee(target_pause_time_ms > 0.0,
             err_msg("target_pause_time_ms = %1.6lf should be positive",
                     target_pause_time_ms));
   guarantee(_collection_set == NULL, "Precondition");
 
-  // 预测耗时
+  // 预测耗时相关
+
+  // 通过 脏card数量 推基础需要停顿时间 （全局rs update脏卡、rs scan全局所有card）
   double base_time_ms = predict_base_elapsed_time_ms(_pending_cards);
   double predicted_pause_time_ms = base_time_ms;
-  double time_remaining_ms = MAX2(target_pause_time_ms - base_time_ms, 0.0);
+  // 推的时间 距离目标时间target的差距，大于0-》推测时间在目标内 小于-》超过目标，需要挑选
+  double time_remaining_ms = MAX2(target_pause_time_ms - base_time_ms, 0.0);  // 距离目标耗时还剩下多少时间
+
   // 比较目标时间
 
   ergo_verbose4(ErgoCSetConstruction | ErgoHigh,
@@ -2005,21 +2031,27 @@ void G1CollectorPolicy::finalize_cset(double target_pause_time_ms, EvacuationInf
   uint eden_region_length = young_list->length() - survivor_region_length;
   init_cset_region_lengths(eden_region_length, survivor_region_length);
 
+  // hr指向 s region
   HeapRegion* hr = young_list->first_survivor_region();
   while (hr != NULL) {
     assert(hr->is_survivor(), "badly formed young list");
-    hr->set_young();
+    hr->set_young();// 这些s region更新是young
     hr = hr->get_next_young_region();
   }
 
   // Clear the fields that point to the survivor list - they are all young now.
-  // 清理指向suvivor
+  // 清理指向suvivor，单纯3个引用
   young_list->clear_survivors();
 
-  // 更新收集set的链表头（实际上就是当前已被使用的region）
-  _collection_set = _inc_cset_head;
+  // 直接使用当前inc_cset已有的region
+  _collection_set = _inc_cset_head;// 直接使用inc_cset当前部分，不影响新增到inc_cset
   _collection_set_bytes_used_before = _inc_cset_bytes_used_before;
+  // region不作为分配region时退役操作，调用add_region_to_incremental_cset_common加入cset
+  // _inc_cset_predicted_elapsed_time_ms就是加入cset时， 预测计算的
+   
+  // 第2次看推测的时间占用目标，减掉当前所有csetregion回收预测
   time_remaining_ms = MAX2(time_remaining_ms - _inc_cset_predicted_elapsed_time_ms, 0.0);
+  // 实际关键的 预测停顿时间-》当前当前所有cset的region回收实际
   predicted_pause_time_ms += _inc_cset_predicted_elapsed_time_ms;
 
   ergo_verbose3(ErgoCSetConstruction | ErgoHigh,
@@ -2035,22 +2067,28 @@ void G1CollectorPolicy::finalize_cset(double target_pause_time_ms, EvacuationInf
   set_recorded_rs_lengths(_inc_cset_recorded_rs_lengths);
 
   double young_end_time_sec = os::elapsedTime();
+  // end ：记录年轻代cset时间
   phase_times()->record_young_cset_choice_time_ms((young_end_time_sec - young_start_time_sec) * 1000.0);
 
   // Set the start of the non-young choice time.
   double non_young_start_time_sec = young_end_time_sec;
 
+  // 需要收集old的 -》mixed gc进入
   if (!gcs_are_young()) {
     CollectionSetChooser* cset_chooser = _collectionSetChooser;
     cset_chooser->verify();
+    // 加入old 到cset数量下限：当前cset region数/8 （8分1）
     const uint min_old_cset_length = calc_min_old_cset_length();
+    // 当前堆region的1/10
     const uint max_old_cset_length = calc_max_old_cset_length();
 
     uint expensive_region_num = 0;
     bool check_time_remaining = adaptive_young_list_length();
 
+    // 从cset遍历获取
     HeapRegion* hr = cset_chooser->peek();
     while (hr != NULL) {
+      // 已超过数量上限终止：cset old数量超过 堆总region数的1/10
       if (old_cset_region_length() >= max_old_cset_length) {
         // Added maximum number of old regions to the CSet.
         ergo_verbose2(ErgoCSetConstruction,
@@ -2068,6 +2106,8 @@ void G1CollectorPolicy::finalize_cset(double target_pause_time_ms, EvacuationInf
       size_t reclaimable_bytes = cset_chooser->remaining_reclaimable_bytes();
       double reclaimable_perc = reclaimable_bytes_perc(reclaimable_bytes);
       double threshold = (double) G1HeapWastePercent;
+      // mixed gc相关
+      // 当前可回收的大小 < G1HeapWastePercent 10%, 不执行加入old 到cset
       if (reclaimable_perc <= threshold) {
         // We've added enough old regions that the amount of uncollected
         // reclaimable space is at or below the waste threshold. Stop
@@ -2085,9 +2125,11 @@ void G1CollectorPolicy::finalize_cset(double target_pause_time_ms, EvacuationInf
                       reclaimable_perc, threshold);
         break;
       }
-
+      // 计算回收当前region的预测时间
       double predicted_time_ms = predict_region_elapsed_time_ms(hr, gcs_are_young());
+      // 有时间剩余
       if (check_time_remaining) {
+        // 感觉time_remaining_ms
         if (predicted_time_ms > time_remaining_ms) {
           // Too expensive for the current CSet.
 
@@ -2111,6 +2153,8 @@ void G1CollectorPolicy::finalize_cset(double target_pause_time_ms, EvacuationInf
           expensive_region_num += 1;
         }
       } else {
+        // 没时间剩余
+        // 不继续选old region加入cset条件：当前cset 中old超过cset总数的1/8 
         if (old_cset_region_length() >= min_old_cset_length) {
           // In the non-auto-tuning case, we'll finish adding regions
           // to the CSet if we reach the minimum.
@@ -2125,20 +2169,24 @@ void G1CollectorPolicy::finalize_cset(double target_pause_time_ms, EvacuationInf
       }
 
       // We will add this region to the CSet.
+      // 第三次看推测时间 占用目标时间
       time_remaining_ms = MAX2(time_remaining_ms - predicted_time_ms, 0.0);
+      // +到预测停顿时间
       predicted_pause_time_ms += predicted_time_ms;
-      cset_chooser->remove_and_move_to_next(hr);
+      cset_chooser->remove_and_move_to_next(hr);// 从cset_chooser移除
+      // 从old set移除当前region -》不作为old，要被回收
       _g1->old_set_remove(hr);
+      // 加入到cset，实际头插到链表
       add_old_region_to_cset(hr);
 
-      hr = cset_chooser->peek();
+      hr = cset_chooser->peek();// 下个
     }
     if (hr == NULL) {
       ergo_verbose0(ErgoCSetConstruction,
                     "finish adding old regions to CSet",
                     ergo_format_reason("candidate old regions not available"));
     }
-
+    // 有剩余时间，才进入
     if (expensive_region_num > 0) {
       // We print the information once here at the end, predicated on
       // whether we added any apparently expensive regions or not, to
@@ -2161,6 +2209,7 @@ void G1CollectorPolicy::finalize_cset(double target_pause_time_ms, EvacuationInf
 
   stop_incremental_cset_building();
 
+  // 代表选完cset
   ergo_verbose5(ErgoCSetConstruction,
                 "finish choosing CSet",
                 ergo_format_region("eden")
@@ -2173,7 +2222,9 @@ void G1CollectorPolicy::finalize_cset(double target_pause_time_ms, EvacuationInf
                 predicted_pause_time_ms, target_pause_time_ms);
 
   double non_young_end_time_sec = os::elapsedTime();
+  // 选择cset的region时间
   phase_times()->record_non_young_cset_choice_time_ms((non_young_end_time_sec - non_young_start_time_sec) * 1000.0);
+  // end： 更新本次需要回收region
   evacuation_info.set_collectionset_regions(cset_region_length());
 }
 

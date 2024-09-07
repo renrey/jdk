@@ -34,12 +34,27 @@
 			"path": "hotspot/src/cpu/x86/vm/templateTable_x86_64.cpp",
 			"bookmarks": [
 				{
-					"line": 3251,
+					"line": 132,
+					"column": 0,
+					"label": "更新oop指针操作"
+				},
+				{
+					"line": 152,
+					"column": 0,
+					"label": "更新指针-执行g1写屏障（前）"
+				},
+				{
+					"line": 172,
+					"column": 0,
+					"label": "更新指针-执行g1写屏障（后）"
+				},
+				{
+					"line": 3288,
 					"column": 0,
 					"label": "new-字节码分配对象入口"
 				},
 				{
-					"line": 3615,
+					"line": 3652,
 					"column": 0,
 					"label": "monitorenter-字节码入口"
 				}
@@ -324,17 +339,17 @@
 					"label": "initialize-分代堆初始化"
 				},
 				{
-					"line": 341,
+					"line": 344,
 					"column": 0,
 					"label": "分代堆布局堆-mem_allocate分配内存"
 				},
 				{
-					"line": 961,
+					"line": 976,
 					"column": 0,
 					"label": "unsafe_max_tlab_alloc-分代堆中最大tlab大小"
 				},
 				{
-					"line": 971,
+					"line": 986,
 					"column": 0,
 					"label": "allocate_new_tlab-分代堆申请tlab空间"
 				}
@@ -479,42 +494,42 @@
 					"label": "StringTable创建"
 				},
 				{
-					"line": 779,
+					"line": 780,
 					"column": 0,
 					"label": "initialize_heap-堆初始化"
 				},
 				{
-					"line": 785,
+					"line": 786,
 					"column": 0,
 					"label": "堆初始化-ps类型初始化"
 				},
 				{
-					"line": 793,
+					"line": 794,
 					"column": 0,
 					"label": "堆初始化-g1类型堆初始化"
 				},
 				{
-					"line": 820,
+					"line": 821,
 					"column": 0,
 					"label": "堆初始化-gc相关初始化"
 				},
 				{
-					"line": 824,
+					"line": 825,
 					"column": 0,
 					"label": "堆初始化-分代堆"
 				},
 				{
-					"line": 830,
+					"line": 831,
 					"column": 0,
 					"label": "进行具体类型堆的初始化"
 				},
 				{
-					"line": 837,
+					"line": 838,
 					"column": 0,
 					"label": "堆初始化-压缩指针初始化"
 				},
 				{
-					"line": 904,
+					"line": 905,
 					"column": 0,
 					"label": "堆初始化-tlab初始化"
 				}
@@ -564,17 +579,22 @@
 			"path": "hotspot/src/share/vm/memory/defNewGeneration.cpp",
 			"bookmarks": [
 				{
-					"line": 518,
+					"line": 523,
 					"column": 0,
 					"label": "年轻代-分配from空间大小"
 				},
 				{
-					"line": 1074,
+					"line": 843,
+					"column": 0,
+					"label": "copy回收-判断最大年龄"
+				},
+				{
+					"line": 1097,
 					"column": 0,
 					"label": "def年轻代-申请分配空间"
 				},
 				{
-					"line": 1130,
+					"line": 1153,
 					"column": 0,
 					"label": "par_allocate-分配空间"
 				}
@@ -584,22 +604,22 @@
 			"path": "hotspot/src/share/vm/memory/space.cpp",
 			"bookmarks": [
 				{
-					"line": 859,
+					"line": 864,
 					"column": 0,
 					"label": "par_allocate_impl--- 指定空间中无锁申请空间"
 				},
 				{
-					"line": 861,
+					"line": 866,
 					"column": 0,
 					"label": "par_allocate_impl分配失败重试，直到成功或者空间不足为止"
 				},
 				{
-					"line": 871,
+					"line": 876,
 					"column": 0,
 					"label": "指针碰撞申请---cmpxchg_ptr竞争cas更新top"
 				},
 				{
-					"line": 939,
+					"line": 944,
 					"column": 0,
 					"label": "eden区-并行分配空间-无锁"
 				}
@@ -719,149 +739,164 @@
 					"label": "申请大对象空间入口-attempt_allocation_humongous"
 				},
 				{
-					"line": 1338,
+					"line": 1339,
 					"column": 0,
 					"label": "do_collection-执行fullgc方法入口"
 				},
 				{
-					"line": 1382,
+					"line": 1379,
+					"column": 0,
+					"label": "fullgc日志-开头文本"
+				},
+				{
+					"line": 1384,
 					"column": 0,
 					"label": "[fullgc]开始"
 				},
 				{
-					"line": 1401,
+					"line": 1404,
 					"column": 0,
 					"label": "标记为fullgc"
 				},
 				{
-					"line": 1594,
+					"line": 1604,
 					"column": 0,
 					"label": "[fullgc]结束"
 				},
 				{
-					"line": 1626,
+					"line": 1636,
 					"column": 0,
 					"label": "[g1fullgc]-触发-显式方法入口"
 				},
 				{
-					"line": 1729,
+					"line": 1739,
 					"column": 0,
 					"label": "satisfy_failed_allocation--其他代码触发g1fullgc的入口"
 				},
 				{
-					"line": 1762,
+					"line": 1772,
 					"column": 0,
 					"label": "[g1fullgc]-触发"
 				},
 				{
-					"line": 1781,
+					"line": 1791,
 					"column": 0,
 					"label": "[g1fullgc]-触发"
 				},
 				{
-					"line": 2042,
+					"line": 2052,
 					"column": 0,
 					"label": "初始化-humongous对象大小生成-》region大小的一半"
 				},
 				{
-					"line": 2068,
+					"line": 2078,
 					"column": 0,
 					"label": "g1堆-堆初始化"
 				},
 				{
-					"line": 2126,
+					"line": 2136,
 					"column": 0,
 					"label": "堆初始创建_rem_set--- "
 				},
 				{
-					"line": 2189,
+					"line": 2200,
 					"column": 0,
 					"label": "堆初始创建_cm --- 并发标记的对象"
 				},
 				{
-					"line": 2198,
+					"line": 2209,
 					"column": 0,
 					"label": "堆初始化- 预留from card缓存空间-》remset"
 				},
 				{
-					"line": 2217,
+					"line": 2228,
 					"column": 0,
 					"label": "堆初始化- satb初始化"
 				},
 				{
-					"line": 2222,
+					"line": 2233,
 					"column": 0,
 					"label": "堆初始化- dirty_card初始化"
 				},
 				{
-					"line": 2255,
+					"line": 2266,
 					"column": 0,
 					"label": "堆初始化-创建dummy region （认为是满的）"
 				},
 				{
-					"line": 2267,
+					"line": 2278,
 					"column": 0,
 					"label": "堆初始-指定_mutator_alloc_region"
 				},
 				{
-					"line": 2617,
+					"line": 2628,
 					"column": 0,
 					"label": "g1收集-collect入口"
 				},
 				{
-					"line": 3116,
+					"line": 3127,
 					"column": 0,
 					"label": "unsafe_max_tlab_alloc-g1的最大tlab大小"
 				},
 				{
-					"line": 3981,
+					"line": 3957,
+					"column": 0,
+					"label": "PrintGC- g1下这个日志打印"
+				},
+				{
+					"line": 4004,
 					"column": 0,
 					"label": "do_collection_pause_at_safepoint --- young gc方法入口"
 				},
 				{
-					"line": 4071,
+					"line": 4095,
 					"column": 0,
 					"label": "younggc-gc前置执行"
 				},
 				{
-					"line": 4072,
+					"line": 4096,
 					"column": 0,
 					"label": "执行gc前，gc计数+1"
 				},
 				{
-					"line": 4123,
+					"line": 4148,
 					"column": 0,
 					"label": "[younggc]开始"
 				},
 				{
-					"line": 4127,
+					"line": 4152,
 					"column": 0,
 					"label": "younggc-开始并发标记"
 				},
 				{
-					"line": 4134,
+					"line": 4162,
 					"column": 0,
 					"label": "进入等待cm线程完成scan"
 				},
 				{
-					"line": 4142,
+					"line": 4170,
 					"column": 0,
 					"label": "younggc-并发标记已完成"
 				},
 				{
-					"line": 4317,
+					"line": 4351,
 					"column": 0,
 					"label": "[younggc]结束"
 				},
 				{
-					"line": 6566,
+					"line": 6630,
 					"column": 0,
 					"label": "new_mutator_alloc_region"
 				},
 				{
-					"line": 6663,
+					"line": 6729,
 					"column": 0,
 					"label": "触发加入suvivor region的位置"
+				},
+				{
+					"line": 6737,
+					"column": 0,
+					"label": "分配suvivor region 的方法"
 				}
 			]
 		},
@@ -869,9 +904,14 @@
 			"path": "hotspot/src/share/vm/gc_implementation/g1/g1CollectedHeap.hpp",
 			"bookmarks": [
 				{
-					"line": 235,
+					"line": 238,
 					"column": 0,
 					"label": "g1_humongous对象大小变量"
+				},
+				{
+					"line": 1935,
+					"column": 0,
+					"label": "rs屏障-过滤实现"
 				}
 			]
 		},
@@ -882,6 +922,11 @@
 					"line": 64,
 					"column": 0,
 					"label": "attempt_allocation-申请普通对象空间"
+				},
+				{
+					"line": 100,
+					"column": 0,
+					"label": "调用在suvivor region 分配"
 				}
 			]
 		},
@@ -892,6 +937,11 @@
 					"line": 178,
 					"column": 0,
 					"label": "设置region大小"
+				},
+				{
+					"line": 363,
+					"column": 0,
+					"label": "通过mixed、young类型预测rs扫描时间"
 				},
 				{
 					"line": 981,
@@ -909,17 +959,22 @@
 					"label": "[mixedGC]-更新标志"
 				},
 				{
-					"line": 1884,
+					"line": 1347,
+					"column": 0,
+					"label": "预测1个region执行gc全流程时间"
+				},
+				{
+					"line": 1904,
 					"column": 0,
 					"label": "[mixedGC]-下次gc变mixed的条件"
 				},
 				{
-					"line": 2254,
+					"line": 2305,
 					"column": 0,
 					"label": "打印mixed gc暂停时间"
 				},
 				{
-					"line": 2283,
+					"line": 2334,
 					"column": 0,
 					"label": "record_full_collection--记录fullgc耗时"
 				}
@@ -1004,17 +1059,12 @@
 					"label": "ConcurrentMarkThread::run--线程主函数"
 				},
 				{
-					"line": 114,
-					"column": 0,
-					"label": "线程运行逻辑-执行扫描root_region"
-				},
-				{
-					"line": 192,
+					"line": 195,
 					"column": 0,
 					"label": "调交清理任务(最终清理)"
 				},
 				{
-					"line": 337,
+					"line": 340,
 					"column": 0,
 					"label": "ConcurrentMarkThread线程等待唤醒"
 				}
@@ -1029,97 +1079,97 @@
 					"label": "更新新的suvivor，变相通知cm线程需要执行root region扫描"
 				},
 				{
-					"line": 1076,
+					"line": 1077,
 					"column": 0,
 					"label": "CMConcurrentMarkingTask(并发标记)-从已标记root开始扫描"
 				},
 				{
-					"line": 1102,
+					"line": 1103,
 					"column": 0,
 					"label": "do_marking_step-真正调用并发标记"
 				},
 				{
-					"line": 1180,
+					"line": 1181,
 					"column": 0,
 					"label": "scanRootRegion- 执行扫描单个root region"
 				},
 				{
-					"line": 1200,
+					"line": 1202,
 					"column": 0,
 					"label": "CMRootRegionScanTask（初始标记的任务）--- 扫描root region的任务对象类"
 				},
 				{
-					"line": 1217,
+					"line": 1221,
 					"column": 0,
 					"label": "调用scanRootRegion进行单个root 的扫描"
 				},
 				{
-					"line": 1223,
+					"line": 1227,
 					"column": 0,
 					"label": "scanRootRegions-扫描root region"
 				},
 				{
-					"line": 1249,
+					"line": 1256,
 					"column": 0,
 					"label": "调用root_regions的scan_finished-》扫描完成"
 				},
 				{
-					"line": 1314,
+					"line": 1321,
 					"column": 0,
 					"label": "重标记开始"
 				},
 				{
-					"line": 1374,
+					"line": 1381,
 					"column": 0,
 					"label": "重标记结束"
 				},
 				{
-					"line": 1780,
+					"line": 1787,
 					"column": 0,
 					"label": "有存活对象的region 设置bitmap标记"
 				},
 				{
-					"line": 2016,
+					"line": 2023,
 					"column": 0,
 					"label": "清理开始"
 				},
 				{
-					"line": 2142,
+					"line": 2149,
 					"column": 0,
 					"label": "清理结束"
 				},
 				{
-					"line": 3289,
+					"line": 3300,
 					"column": 0,
 					"label": "重要print_summary_info --- 打印cm总流程情况，包含各阶段耗时！！！！！！！！！！！"
 				},
 				{
-					"line": 3588,
+					"line": 3599,
 					"column": 0,
 					"label": "regular_clock_call--gc过程做特殊条件判断从而终止正在执行的任务"
 				},
 				{
-					"line": 3599,
+					"line": 3610,
 					"column": 0,
 					"label": "内存溢出会终止正在执行的gc（young）"
 				},
 				{
-					"line": 3612,
+					"line": 3623,
 					"column": 0,
 					"label": "fullgc会终止在进行的young gc"
 				},
 				{
-					"line": 3656,
+					"line": 3667,
 					"column": 0,
 					"label": "判断当前已用过时间超过目标时间"
 				},
 				{
-					"line": 4235,
+					"line": 4249,
 					"column": 0,
 					"label": "大对象是1个gcroot"
 				},
 				{
-					"line": 4309,
+					"line": 4325,
 					"column": 0,
 					"label": "调用获取下一个需要扫描的region"
 				}
@@ -1149,7 +1199,7 @@
 					"label": "进行这个对象范围内的其他region标记"
 				},
 				{
-					"line": 402,
+					"line": 405,
 					"column": 0,
 					"label": "grayRoot- 标灰"
 				}
@@ -1166,22 +1216,102 @@
 			]
 		},
 		{
-			"path": "hotspot/src/share/vm/gc_implementation/g1/g1CollectorPolicy.hpp",
-			"bookmarks": [
-				{
-					"line": 363,
-					"column": 0,
-					"label": "通过mixed、young类型预测rs扫描时间"
-				}
-			]
-		},
-		{
 			"path": "hotspot/src/share/vm/memory/referenceProcessor.hpp",
 			"bookmarks": [
 				{
 					"line": 513,
 					"column": 0,
 					"label": "對存活reference對象操作的通用接口---如copy"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/g1/heapRegion.hpp",
+			"bookmarks": [
+				{
+					"line": 711,
+					"column": 0,
+					"label": "3种更新region类型方法！！！"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/cpu/x86/vm/stubGenerator_x86_64.cpp",
+			"bookmarks": [
+				{
+					"line": 1181,
+					"column": 0,
+					"label": "生成write pre barrier代碼"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/g1/g1SATBCardTableModRefBS.hpp",
+			"bookmarks": [
+				{
+					"line": 142,
+					"column": 0,
+					"label": "g1使用的屏障集合"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/concurrentMarkSweep/concurrentMarkSweepGeneration.cpp",
+			"bookmarks": [
+				{
+					"line": 1099,
+					"column": 0,
+					"label": "在开始并发标记之后晋升的对象都是标记存活"
+				},
+				{
+					"line": 6117,
+					"column": 0,
+					"label": "cms remark具体逻辑"
+				},
+				{
+					"line": 6170,
+					"column": 0,
+					"label": "實現增量更新IU"
+				},
+				{
+					"line": 8257,
+					"column": 0,
+					"label": "对灰色对象的子对象扫描-非并发"
+				},
+				{
+					"line": 8335,
+					"column": 0,
+					"label": "灰色对象的子对象递归扫描"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/memory/sharedHeap.cpp",
+			"bookmarks": [
+				{
+					"line": 140,
+					"column": 0,
+					"label": "标记gcroot"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/cpu/x86/vm/templateTable_x86_32.cpp",
+			"bookmarks": [
+				{
+					"line": 144,
+					"column": 0,
+					"label": "执行g1 pre 写屏障"
+				}
+			]
+		},
+		{
+			"path": "hotspot/src/share/vm/gc_implementation/g1/g1RemSet.cpp",
+			"bookmarks": [
+				{
+					"line": 141,
+					"column": 0,
+					"label": "扫描card函数"
 				}
 			]
 		}

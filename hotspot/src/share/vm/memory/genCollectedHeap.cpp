@@ -97,6 +97,7 @@ jint GenCollectedHeap::initialize() {
   // The heap must be at least as aligned as generations.
   size_t gen_alignment = Generation::GenGrain;
 
+  // Generation对象
   // 通过回收策略创建分代generations（2个代）：MarkSweepPolicy::initialize_generations()
   _gen_specs = gen_policy()->generations();
 
@@ -110,10 +111,11 @@ jint GenCollectedHeap::initialize() {
   char* heap_address;
   size_t total_reserved = 0;
   int n_covered_regions = 0;
-  ReservedSpace heap_rs;
+  ReservedSpace heap_rs;// 实际就是2个代共需要空间
 
   size_t heap_alignment = collector_policy()->heap_alignment();
 
+  // 分配空间
   heap_address = allocate(heap_alignment, &total_reserved,
                           &n_covered_regions, &heap_rs);
 
@@ -136,6 +138,7 @@ jint GenCollectedHeap::initialize() {
   //MarkSweepPolicy
   // _rem_set = remember_set, 實現使用CardTable
   // CollectorPolicy::create_rem_set, 即CardTableRS
+  // 这个remset 等于是为了全堆准备（_reserved=2个代大小）
   _rem_set = collector_policy()->create_rem_set(_reserved, n_covered_regions);
   set_barrier_set(rem_set()->bs());
 
@@ -194,7 +197,7 @@ char* GenCollectedHeap::allocate(size_t alignment,
   // of covered regions.
   n_covered_regions += 2;
 
-  *_total_reserved = total_reserved;
+  *_total_reserved = total_reserved;// 每个代的大小加一起
   *_n_covered_regions = n_covered_regions;
 
    // 预留内存
@@ -611,6 +614,7 @@ gen_process_strong_roots(int level,
                          KlassClosure* klass_closure) {
   // General strong roots.
 
+  // 通用强root标记（例如线程本地变量、字符常量池、）
   if (!do_code_roots) {
     SharedHeap::process_strong_roots(activate_scope, is_scavenging, so,
                                      not_older_gens, NULL, klass_closure);
@@ -618,30 +622,39 @@ gen_process_strong_roots(int level,
     bool do_code_marking = (activate_scope || nmethod::oops_do_marking_is_active());
     CodeBlobToOopClosure code_roots(not_older_gens, /*do_marking=*/ do_code_marking);
     // 非分代堆的扫描
+    // 從gcroot開始標記掃描 -》 被人是root的執行not_older_gens（即標記函數）
     SharedHeap::process_strong_roots(activate_scope, is_scavenging, so,
                                      not_older_gens, &code_roots, klass_closure);
   }
-  // 年轻代root扫描
+  // 年轻代对象作为root扫描
   if (younger_gens_as_roots) {
     if (!_gen_process_strong_tasks->is_task_claimed(GCH_PS_younger_gens)) {
-      for (int i = 0; i < level; i++) {
+      // 老年代的会执行
+      for (int i = 0; i < level; i++) {// 年轻代gc一般不会执行（level=0）
           // OopsInGenClosure::set_generation(Generation* gen))
         // 每次更新闭包的当前代信息，应该执行时里需要回查使用代对象
         not_older_gens->set_generation(_gens[i]);// 把具体的gen对象设置到not
 
         // Generation::oop_iterate(ExtendedOopClosure* cl)
-        _gens[i]->oop_iterate(not_older_gens); // 遍历代的对象执行not_older_gens的闭包函数
+        // 对年轻代下目标空间（eden、to、from s）的遍历所有对象，对这些对象的属性引用对象执行函数
+        // 注意引用对象非当前年轻代区域的不会执行
+        _gens[i]->oop_iterate(not_older_gens); // 遍历代的对象的引用执行not_older_gens的闭包函数
       }
       // 重置函数中_gen（后面闭包会被复用吧）
       not_older_gens->reset_generation();
     }
   }
-  // 老年代root扫描，
+
+  // 年轻代gc会使用
+  // 老年代作为root扫描，
   // 并行时，多线程扫描老年代
   // When collection is parallel, all threads get to cooperate to do
   // older-gen scanning.
   for (int i = level+1; i < _n_gens; i++) {// 这里level+1就是从老年代开始（传入是年轻代），如果传入是老年代不会进入循环
     older_gens->set_generation(_gens[i]);
+    // 通过remset脏卡遍历有引用young的老年代（实际就是对这些对象的引用-》即young引用执行）
+    // 其中会先清理现有card，在做完blk后，重新标记
+    // 实际使用ConcurrentMarkSweepGeneration::younger_refs_iterate(
     rem_set()->younger_refs_iterate(_gens[i], older_gens);
     older_gens->reset_generation();
   }
@@ -658,6 +671,8 @@ void GenCollectedHeap::gen_process_weak_roots(OopClosure* root_closure,
   }
 }
 
+
+// 就是先对年轻代执行，然后对老年代执行
 #define GCH_SINCE_SAVE_MARKS_ITERATE_DEFN(OopClosureType, nv_suffix)    \
 void GenCollectedHeap::                                                 \
 oop_since_save_marks_iterate(int level,                                 \

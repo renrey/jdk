@@ -184,18 +184,19 @@ void VM_CMS_Final_Remark::doit() {
   HS_PRIVATE_CMS_REMARK_BEGIN(
                                 );
 #endif /* USDT2 */
-
+  // final mark 开始-》stw
   _collector->_gc_timer_cm->register_gc_pause_start("Final Mark");
 
   GenCollectedHeap* gch = GenCollectedHeap::heap();
   GCCauseSetter gccs(gch, GCCause::_cms_final_remark);
 
-  VM_CMS_Operation::verify_before_gc();
+  VM_CMS_Operation::verify_before_gc();// 验证
 
   IsGCActiveMark x; // stop-world GC active
+  // 实际执行checkpointRootsFinal
   _collector->do_CMS_operation(CMSCollector::CMS_op_checkpointRootsFinal, gch->gc_cause());
 
-  VM_CMS_Operation::verify_after_gc();
+  VM_CMS_Operation::verify_after_gc();// 完成后验证
 
   _collector->save_heap_summary();
   _collector->_gc_timer_cm->register_gc_pause_end();

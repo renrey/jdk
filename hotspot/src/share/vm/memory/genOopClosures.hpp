@@ -133,6 +133,7 @@ class ScanClosure: public OopsInKlassOrGenClosure {
 // precise, but faster, than a ScanClosure
 // 用于扫描DefNewGeneration
 // 仅对指向 DefNewGeneration 的指针执行屏障存储调用，比起ScanClosure精准差了，但是更快
+// 邏輯跟ScanClosure::do_oop_work()差不多
 class FastScanClosure: public OopsInKlassOrGenClosure {
  protected:
   DefNewGeneration* _g;

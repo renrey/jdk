@@ -57,7 +57,7 @@ protected:
     NumSeqTasks          = 1
   };
 
-  CardTableModRefBS*     _ct_bs;
+  CardTableModRefBS*     _ct_bs;// 卡表封装对象
   SubTasksDone*          _seq_task;
   G1CollectorPolicy*     _g1p;
 

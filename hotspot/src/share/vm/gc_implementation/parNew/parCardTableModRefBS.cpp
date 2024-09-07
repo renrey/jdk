@@ -65,6 +65,7 @@ void CardTableModRefBS::non_clean_card_iterate_parallel_work(Space* sp, MemRegio
 
   uint stride = 0;
   while (!pst->is_task_claimed(/* reference */ stride)) {
+    // mr還是具體空間
     process_stride(sp, mr, stride, n_strides, cl, ct,
                    lowest_non_clean,
                    lowest_non_clean_base_chunk_index,
@@ -98,6 +99,7 @@ process_stride(Space* sp,
 
   // Find the first card address of the first chunk in the stride that is
   // at least "bottom" of the used region.
+  // 轉成card下
   jbyte*    start_card  = byte_for(used.start());
   jbyte*    end_card    = byte_after(used.last());
   uintptr_t start_chunk = addr_to_chunk_index(used.start());
@@ -125,6 +127,7 @@ process_stride(Space* sp,
     // DirtyCardToOopClosure::do_MemRegion().
     jbyte*    chunk_card_end = chunk_card_start + ParGCCardsPerStrideChunk;
     // Invariant: chunk_mr should be fully contained within the "used" region.
+    // 轉成具體空間
     MemRegion chunk_mr       = MemRegion(addr_for(chunk_card_start),
                                          chunk_card_end >= end_card ?
                                            used.end() : addr_for(chunk_card_end));
@@ -227,15 +230,18 @@ process_chunk_boundaries(Space* sp,
                     (intptr_t) last_card_of_first_obj);
     // Note that this does not need to go beyond our last card
     // if our first object completely straddles this chunk.
+    // 找到第1个脏card
     for (jbyte* cur = first_card_of_cur_chunk;
          cur <= last_card_to_check; cur++) {
       jbyte val = *cur;
+      // 判断当前card是否需要scan（即脏了-》dirty or preclean）
       if (card_will_be_scanned(val)) {
         first_dirty_card = cur; break;
       } else {
         assert(!card_may_have_been_dirty(val), "Error");
       }
     }
+    // 有脏card
     if (first_dirty_card != NULL) {
       NOISY(tty->print_cr(" LNC: Found a dirty card at " PTR_FORMAT " in current chunk",
                     first_dirty_card);)
@@ -243,6 +249,7 @@ process_chunk_boundaries(Space* sp,
              "Bounds error.");
       assert(lowest_non_clean[cur_chunk_index] == NULL,
              "Write exactly once : value should be stable hereafter for this round");
+      // 记录这个chunk第1个card       
       lowest_non_clean[cur_chunk_index] = first_dirty_card;
     } NOISY(else {
       tty->print_cr(" LNC: Found no dirty card in current chunk; leaving LNC entry NULL");

@@ -1178,7 +1178,9 @@ class StubGenerator: public StubCodeGenerator {
   //
   //     Destroy no registers!
   //
+  // 写屏障 -- 前置屏障
   void  gen_write_ref_array_pre_barrier(Register addr, Register count, bool dest_uninitialized) {
+    // 判断对应堆使用的屏障
     BarrierSet* bs = Universe::heap()->barrier_set();
     switch (bs->kind()) {
       case BarrierSet::G1SATBCT:
@@ -1222,6 +1224,7 @@ class StubGenerator: public StubCodeGenerator {
   //
   //  The input registers are overwritten.
   //
+   // 写屏障 -- 后置屏障
   void  gen_write_ref_array_post_barrier(Register start, Register count, Register scratch) {
     assert_different_registers(start, count, scratch);
     BarrierSet* bs = Universe::heap()->barrier_set();

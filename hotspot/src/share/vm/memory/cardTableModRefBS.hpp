@@ -60,16 +60,16 @@ class CardTableModRefBS: public ModRefBarrierSet {
  protected:
 
   enum CardValues {
-    clean_card                  = -1,
+    clean_card                  = -1,// 8个1
     // The mask contains zeros in places for all other values.
-    clean_card_mask             = clean_card - 31,
+    clean_card_mask             = clean_card - 31,// 11111111 11111111 11111111 11100000, 后5位0-》清理后5位
 
-    dirty_card                  =  0,
-    precleaned_card             =  1,
-    claimed_card                =  2,
-    deferred_card               =  4,
-    last_card                   =  8,
-    CT_MR_BS_last_reserved      = 16
+    dirty_card                  =  0,// 8个0
+    precleaned_card             =  1,// 00000001
+    claimed_card                =  2,// 00000010
+    deferred_card               =  4,// 00000100
+    last_card                   =  8,// 00001000
+    CT_MR_BS_last_reserved      = 16//  00010000
   };
 
   // a word's worth (row) of clean card values
@@ -267,9 +267,9 @@ class CardTableModRefBS: public ModRefBarrierSet {
 public:
   // Constants
   enum SomePublicConstants {
-    card_shift                  = 9,
-    card_size                   = 1 << card_shift,
-    card_size_in_words          = card_size / sizeof(HeapWord)
+    card_shift                  = 9,// 9個bit-》1000000000（9個0），即可代表512個b
+    card_size                   = 1 << card_shift,// 1個card，代表512b的數據
+    card_size_in_words          = card_size / sizeof(HeapWord)// 1個card空間（512b）可存多少個heapword-》64個
   };
 
   static int clean_card_val()      { return clean_card; }

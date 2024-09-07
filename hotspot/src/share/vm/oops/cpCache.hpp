@@ -175,7 +175,7 @@ class ConstantPoolCacheEntry VALUE_OBJ_CLASS_SPEC {
   enum {
     // high order bits are the TosState corresponding to field type or method return type
     tos_state_bits             = 4,
-    tos_state_mask             = right_n_bits(tos_state_bits),
+    tos_state_mask             = right_n_bits(tos_state_bits),// 00..01111
     tos_state_shift            = BitsPerInt - tos_state_bits,  // see verify_tos_state_shift below
     // misc. option bits; can be any bit position in [16..27]
     is_field_entry_shift       = 26,  // (F) is it a field or a method?

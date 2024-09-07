@@ -1427,6 +1427,7 @@ oop CompactibleFreeListSpace::promote(oop obj, size_t obj_size) {
   // additional call through the allocate(size_t) form.  Having
   // the compile inline the call is problematic because allocate(size_t)
   // is a virtual method.
+  // 申请空间
   HeapWord* res = allocate(adjustObjectSize(obj_size));
   if (res != NULL) {
     Copy::aligned_disjoint_words((HeapWord*)obj, res, obj_size);

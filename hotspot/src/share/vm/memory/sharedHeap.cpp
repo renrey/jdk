@@ -137,6 +137,7 @@ SharedHeap::StrongRootsScope::~StrongRootsScope() {
   // nothing particular
 }
 
+// 標記gcroot
 void SharedHeap::process_strong_roots(bool activate_scope,
                                       bool is_scavenging,
                                       ScanningOption so,

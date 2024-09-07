@@ -115,14 +115,20 @@ void CardTableRS::prepare_for_younger_refs_iterate(bool parallel) {
   } else {
     // In an sequential traversal we will always write youngergen, so that
     // the inline barrier is  correct.
+    // card更新成youngergen_card
     set_cur_youngergen_card_val(youngergen_card);
   }
 }
 
+// 會把card清理掉
+// 如果處理後，還是old -》young，則變髒
 void CardTableRS::younger_refs_iterate(Generation* g,
                                        OopsInGenClosure* blk) {
+
+  // g的后一代，             _cur_youngergen_card_val                         
   _last_cur_val_in_gen[g->level()+1] = cur_youngergen_card_val();
-  g->younger_refs_iterate(blk);
+  // 此時g應該是老年代ConcurrentMarkSweepGeneration::younger_refs_iterate
+  g->younger_refs_iterate(blk);// 对当前g的所有
 }
 
 inline bool ClearNoncleanCardWrapper::clear_card(jbyte* entry) {
@@ -201,17 +207,21 @@ void ClearNoncleanCardWrapper::do_MemRegion(MemRegion mr) {
   assert(mr.word_size() > 0, "Error");
   assert(_ct->is_aligned(mr.start()), "mr.start() should be card aligned");
   // mr.end() may not necessarily be card aligned.
+  // find 了card
   jbyte* cur_entry = _ct->byte_for(mr.last());
   const jbyte* limit = _ct->byte_for(mr.start());
   HeapWord* end_of_non_clean = mr.end();
   HeapWord* start_of_non_clean = end_of_non_clean;
-  while (cur_entry >= limit) {
+  while (cur_entry >= limit) {// 后到前
     HeapWord* cur_hw = _ct->addr_for(cur_entry);
+    // 原来非clean，清理掉
     if ((*cur_entry != CardTableRS::clean_card_val()) && clear_card(cur_entry)) {
       // Continue the dirty range by opening the
       // dirty window one card to the left.
-      start_of_non_clean = cur_hw;
+      start_of_non_clean = cur_hw;// start_of_non_clean只会越小
     } else {
+      // 原来clean
+
       // We hit a "clean" card; process any non-empty
       // "dirty" range accumulated so far.
       if (start_of_non_clean < end_of_non_clean) {
@@ -234,18 +244,19 @@ void ClearNoncleanCardWrapper::do_MemRegion(MemRegion mr) {
       // new dirty window.
       end_of_non_clean = cur_hw;
       start_of_non_clean = cur_hw;
+      // 最后start跟end都等的
     }
     // Note that "cur_entry" leads "start_of_non_clean" in
     // its leftward excursion after this point
     // in the loop and, when we hit the left end of "mr",
     // will point off of the left end of the card-table
     // for "mr".
-    cur_entry--;
+    cur_entry--;// 向前遍历
   }
   // If the first card of "mr" was dirty, we will have
   // been left with a dirty window, co-initial with "mr",
   // which we now process.
-  if (start_of_non_clean < end_of_non_clean) {
+  if (start_of_non_clean < end_of_non_clean) {// 即最后遍历的是脏卡
     const MemRegion mrd(start_of_non_clean, end_of_non_clean);
     _dirty_card_closure->do_MemRegion(mrd);
   }
@@ -287,10 +298,12 @@ void CardTableRS::write_ref_field_gc_par(void* field, oop new_val) {
 
 void CardTableRS::younger_refs_in_space_iterate(Space* sp,
                                                 OopsInGenClosure* cl) {
-  const MemRegion urasm = sp->used_region_at_save_marks();
+  const MemRegion urasm = sp->used_region_at_save_marks();//拿到BOTTOM到save_mark
+  // 验证使用的
 #ifdef ASSERT
   // Convert the assertion check to a warning if we are running
   // CMS+ParNew until related bug is fixed.
+  // sp 应该进来是老年代空间
   MemRegion ur    = sp->used_region();
   assert(ur.contains(urasm) || (UseConcMarkSweepGC && UseParNewGC),
          err_msg("Did you forget to call save_marks()? "
@@ -315,6 +328,7 @@ void CardTableRS::younger_refs_in_space_iterate(Space* sp,
     ShouldNotReachHere();
   }
 #endif
+   // 实际执行这里
   _ct_bs->non_clean_card_iterate_possibly_parallel(sp, urasm, cl, this);
 }
 

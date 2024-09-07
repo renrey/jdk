@@ -85,7 +85,7 @@ class SpaceMemRegionOopsIterClosure: public ExtendedOopClosure {
   MemRegion   _mr;
  protected:
   template <class T> void do_oop_work(T* p) {
-    if (_mr.contains(p)) {
+    if (_mr.contains(p)) {// 就是只有当前区域的（引用）对象会执行
       _cl->do_oop(p);
     }
   }

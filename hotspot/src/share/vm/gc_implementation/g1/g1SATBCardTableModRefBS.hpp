@@ -139,6 +139,7 @@ public:
 
 // Adds card-table logging to the post-barrier.
 // Usual invariant: all dirty cards are logged in the DirtyCardQueueSet.
+// g1 屏障集合
 class G1SATBCardTableLoggingModRefBS: public G1SATBCardTableModRefBS {
  private:
   DirtyCardQueueSet& _dcqs;

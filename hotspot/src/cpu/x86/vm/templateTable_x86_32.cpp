@@ -141,6 +141,7 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
         }
         __ get_thread(rcx);
         __ save_bcp();
+        // 执行g1写屏障（前）
         __ g1_write_barrier_pre(rdx /* obj */,
                                 rbx /* pre_val */,
                                 rcx /* thread */,
@@ -155,6 +156,7 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
           // No post barrier for NULL
         } else {
           __ movl(Address(rdx, 0), val);
+          // 执行g1写屏障（后）
           __ g1_write_barrier_post(rdx /* store_adr */,
                                    val /* new_val */,
                                    rcx /* thread */,
@@ -178,7 +180,7 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
             __ store_check(obj.base());
           } else {
             __ leal(rdx, obj);
-            __ store_check(rdx);
+            __ store_check(rdx);// dirty 操作
           }
         }
       }
@@ -2220,6 +2222,7 @@ void TemplateTable::pop_and_check_object(Register r) {
   __ verify_oop(r);
 }
 
+// byte_no即常量池序號
 void TemplateTable::getfield_or_static(int byte_no, bool is_static) {
   transition(vtos, vtos);
 
@@ -2243,6 +2246,7 @@ void TemplateTable::getfield_or_static(int byte_no, bool is_static) {
   __ shrl(flags, ConstantPoolCacheEntry::tos_state_shift);
   assert(btos == 0, "change code, btos != 0");
   // btos
+  // 判斷是否byte類型
   __ andptr(flags, ConstantPoolCacheEntry::tos_state_mask);
   __ jcc(Assembler::notZero, notByte);
 
@@ -2256,11 +2260,12 @@ void TemplateTable::getfield_or_static(int byte_no, bool is_static) {
 
   __ bind(notByte);
   // itos
-  __ cmpl(flags, itos );
+  __ cmpl(flags, itos );//判斷是int
   __ jcc(Assembler::notEqual, notInt);
 
+  //把lo數據提交到操作數棧
   __ movl(rax, lo );
-  __ push(itos);
+  __ push(itos);// 入棧——》put就會出棧
   // Rewrite bytecode to be faster
   if (!is_static) {
     patch_bytecode(Bytecodes::_fast_igetfield, rcx, rbx);

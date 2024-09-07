@@ -129,6 +129,7 @@ HeapWord* G1AllocRegion::new_alloc_region_and_allocate(size_t word_size,
     HeapWord* result = allocate(new_alloc_region, word_size, _bot_updates);
     assert(result != NULL, ar_ext_msg(this, "the allocation should succeeded"));
 
+    // 分配后执行storestore屏障
     OrderAccess::storestore();
     // Note that we first perform the allocation and then we store the
     // region in _alloc_region. This is the reason why an active region

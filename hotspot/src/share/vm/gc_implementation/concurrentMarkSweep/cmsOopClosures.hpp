@@ -240,6 +240,7 @@ class MarkRefsIntoAndScanClosure: public CMSOopsInGenClosure {
                              CMSCollector* collector,
                              bool should_yield,
                              bool concurrent_precleaning);
+                             // MarkRefsIntoAndScanClosure::do_oop
   virtual void do_oop(oop* p);
   virtual void do_oop(narrowOop* p);
   inline void do_oop_nv(oop* p)       { MarkRefsIntoAndScanClosure::do_oop_work(p); }

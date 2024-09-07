@@ -906,6 +906,7 @@ class CMSCollector: public CHeapObj<mtGC> {
   // XXXPERM bool should_collect(bool full, size_t size, bool tlab);
   bool shouldConcurrentCollect();
 
+  // cms的gc接口-》3種，可full的、後台、前台
   void collect(bool   full,
                bool   clear_all_soft_refs,
                size_t size,
@@ -931,6 +932,7 @@ class CMSCollector: public CHeapObj<mtGC> {
   // The last two args indicate if we need precise marking
   // and if so the size of the object so it can be dirtied
   // in its entirety.
+  // 對象晉升操作
   void promoted(bool par, HeapWord* start,
                 bool is_obj_array, size_t obj_size);
 
@@ -965,14 +967,18 @@ class CMSCollector: public CHeapObj<mtGC> {
   CMSBitMap* markBitMap()  { return &_markBitMap; }
   void directAllocated(HeapWord* start, size_t size);
 
+  // 主要cms每個主步驟
   // main CMS steps and related support
+  // 標記gcroot
   void checkpointRootsInitial(bool asynch);
+  // 從gcroot遞歸掃描
   bool markFromRoots(bool asynch);  // a return value of false indicates failure
                                     // due to stack overflow
-  void preclean();
+  void preclean();// preclean
+  // remark
   void checkpointRootsFinal(bool asynch, bool clear_all_soft_refs,
                             bool init_mark_was_synchronous);
-  void sweep(bool asynch);
+  void sweep(bool asynch);// 清理
 
   // Check that the currently executing thread is the expected
   // one (foreground collector or background collector).
@@ -1598,7 +1604,7 @@ class ScanMarkedObjectsAgainClosure: public UpwardsObjectClosure {
 // 在并行阶段，位图是共享的、且需要同步权限
 class MarkFromDirtyCardsClosure: public MemRegionClosure {
   CompactibleFreeListSpace*      _space;
-  ScanMarkedObjectsAgainClosure  _scan_cl;
+  ScanMarkedObjectsAgainClosure  _scan_cl;//ScanMarkedObjectsAgainClosure::do_object_bm
   size_t                         _num_dirty_cards;
 
  public:

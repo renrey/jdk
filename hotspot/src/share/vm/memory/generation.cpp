@@ -309,15 +309,17 @@ class GenerationOopIterateClosure : public SpaceClosure {
 
 void Generation::oop_iterate(ExtendedOopClosure* cl) {
   // 封装了1个新的闭包
-    // _reserved就是预留用于card marking的内存地址
+    // _reserved就是当前代预留空间 -》就是后面用于与目标space具体空间取空间使用
   GenerationOopIterateClosure blk(cl, _reserved);
 
   // 就是对space遍历执行闭包
   // 这个space遍历方法是虚函数，需要看子类实现
+  // 实际却是blk的do_space方法调用space
   // 但里面就是执行封装后闭包的do_space，从而还是对对应子类的space进行遍历对象，执行cl闭包
 
   // 年轻代的(par也是用def)：DefNewGeneration::space_iterate(SpaceClosure* blk) 
   //    => EdenSpace(继承ContiguousSpace)、ContiguousSpace 2种的oop_iterate
+  // 老年代CompactibleFreeListSpace
   space_iterate(&blk);// 
 }
 
@@ -329,6 +331,9 @@ void Generation::oop_iterate(MemRegion mr, ExtendedOopClosure* cl) {
 void Generation::younger_refs_in_space_iterate(Space* sp,
                                                OopsInGenClosure* cl) {
   GenRemSet* rs = SharedHeap::heap()->rem_set();
+
+  // 通过rs遍历
+  // CardTableRS::younger_refs_in_space_iterate
   rs->younger_refs_in_space_iterate(sp, cl);
 }
 
@@ -838,7 +843,7 @@ void OneContigSpaceCardGeneration::reset_saved_marks() {
   _the_space->reset_saved_mark();
 }
 
-
+// 判断当前space的save_mark是否达到top
 bool OneContigSpaceCardGeneration::no_allocs_since_save_marks() {
   return _the_space->saved_mark_at_top();
 }

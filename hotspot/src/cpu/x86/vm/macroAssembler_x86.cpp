@@ -3313,6 +3313,8 @@ void MacroAssembler::g1_write_barrier_pre(Register obj,
     assert(pre_val != rax, "check this code");
   }
 
+  // JavaThread::satb_mark_queue_offset-》当前线程独有的stab区域 
+  // 下面3个地址stab相关
   Address in_progress(thread, in_bytes(JavaThread::satb_mark_queue_offset() +
                                        PtrQueue::byte_offset_of_active()));
   Address index(thread, in_bytes(JavaThread::satb_mark_queue_offset() +
@@ -3337,6 +3339,7 @@ void MacroAssembler::g1_write_barrier_pre(Register obj,
 
   // Is the previous value null?
   cmpptr(pre_val, (int32_t) NULL_WORD);
+  // 上一个值null，无须记录，直接完成
   jcc(Assembler::equal, done);
 
   // Can we store original value in the thread's buffer?
@@ -3345,18 +3348,23 @@ void MacroAssembler::g1_write_barrier_pre(Register obj,
 
   movptr(tmp, index);                   // tmp := *index_adr
   cmpptr(tmp, 0);                       // tmp == 0?
+  // 判断当前线程buffer是否还有空闲，tmp=0代表无空间，跳到执行runtime
   jcc(Assembler::equal, runtime);       // If yes, goto runtime
 
+  // 下面这段就是在buffer记录
   subptr(tmp, wordSize);                // tmp := tmp - wordSize
   movptr(index, tmp);                   // *index_adr := tmp
   addptr(tmp, buffer);                  // tmp := tmp + *buffer_adr
 
   // Record the previous value
-  movptr(Address(tmp, 0), pre_val);
-  jmp(done);
+  // 记录前一个值，完成-> 线程buffer记录完成
+  movptr(Address(tmp, 0), pre_val);// 记录上一个值
+  jmp(done);// 已完成
 
   bind(runtime);
+  // 线程buffer无足够空间
   // save the live input values
+  // push一堆
   if(tosca_live) push(rax);
 
   if (obj != noreg && obj != rax)
@@ -3385,11 +3393,13 @@ void MacroAssembler::g1_write_barrier_pre(Register obj,
     pass_arg0(this, pre_val);
     MacroAssembler::call_VM_leaf_base(CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), 2);
   } else {
+    // 好像进入这， 执行g1_wb_pre-》放入到当前线程的satb_mark_queue
     call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), pre_val, thread);
   }
 
   NOT_LP64( pop(thread); )
 
+  // 把上面push的都pop出来
   // save the live input values
   if (pre_val != rax)
     pop(pre_val);
@@ -3428,13 +3438,19 @@ void MacroAssembler::g1_write_barrier_post(Register store_addr,
   movptr(tmp, store_addr);
   xorptr(tmp, new_val);
   shrptr(tmp, HeapRegion::LogOfHRGrainBytes);
+  // 判断是否跨region，等于就是同一个region，直接完成
   jcc(Assembler::equal, done);
 
   // crosses regions, storing NULL?
 
+  // 新值实际是null，直接完成
   cmpptr(new_val, (int32_t) NULL_WORD);
   jcc(Assembler::equal, done);
 
+
+  // 到这里，代表当前是跨region，且新值非null
+
+  // 判断当前卡页是否已经是脏
   // storing region crossing non-NULL, is card already dirty?
 
   const Register card_addr = tmp;
@@ -3447,33 +3463,41 @@ void MacroAssembler::g1_write_barrier_post(Register store_addr,
   movptr(cardtable, (intptr_t)ct->byte_map_base);
   addptr(card_addr, cardtable);
 
+  // 当前卡页是年轻代，返回
   cmpb(Address(card_addr, 0), (int)G1SATBCardTableModRefBS::g1_young_card_val());
   jcc(Assembler::equal, done);
 
+  // 执行内存屏障 -》 StoreLoad （更新后才执行）
   membar(Assembler::Membar_mask_bits(Assembler::StoreLoad));
+  // 当前卡页已脏，返回
   cmpb(Address(card_addr, 0), (int)CardTableModRefBS::dirty_card_val());
   jcc(Assembler::equal, done);
 
 
   // storing a region crossing, non-NULL oop, card is clean.
   // dirty card and log.
+  // 当前卡页是clean的-》变脏、log记录
+  movb(Address(card_addr, 0), (int)CardTableModRefBS::dirty_card_val());// dirty操作-》变8个0
 
-  movb(Address(card_addr, 0), (int)CardTableModRefBS::dirty_card_val());
-
+  // 线程的dirty_card_queue buffer不足，执行runtime
   cmpl(queue_index, 0);
   jcc(Assembler::equal, runtime);
+
+  // 放入线程的dirty_card_queue buffer
   subl(queue_index, wordSize);
   movptr(tmp2, buffer);
 #ifdef _LP64
   movslq(rscratch1, queue_index);
   addq(tmp2, rscratch1);
   movq(Address(tmp2, 0), card_addr);
+  // 放入线程的dirty_card_queue buffer完成
 #else
   addl(tmp2, queue_index);
   movl(Address(tmp2, 0), card_addr);
 #endif
   jmp(done);
 
+  // 线程的dirty_card_queue buffer不足执行
   bind(runtime);
   // save the live input values
   push(store_addr);
@@ -3498,8 +3522,8 @@ void MacroAssembler::g1_write_barrier_post(Register store_addr,
 void MacroAssembler::store_check(Register obj) {
   // Does a store check for the oop in register obj. The content of
   // register obj is destroyed afterwards.
-  store_check_part_1(obj);
-  store_check_part_2(obj);
+  store_check_part_1(obj);// 計算cardtable中位置
+  store_check_part_2(obj);// dirty對應的card
 }
 
 void MacroAssembler::store_check(Register obj, Address dst) {
@@ -3511,6 +3535,7 @@ void MacroAssembler::store_check(Register obj, Address dst) {
 void MacroAssembler::store_check_part_1(Register obj) {
   BarrierSet* bs = Universe::heap()->barrier_set();
   assert(bs->kind() == BarrierSet::CardTableModRef, "Wrong barrier set kind");
+  // 右移當前對象的地址，得到所在card的段位置（cardtable下標）
   shrptr(obj, CardTableModRefBS::card_shift);
 }
 
@@ -3534,6 +3559,7 @@ void MacroAssembler::store_check_part_2(Register obj) {
     // displacement and done in a single instruction given favorable mapping and a
     // smarter version of as_Address. However, 'ExternalAddress' generates a relocation
     // entry and that entry is not properly handled by the relocation code.
+    // 通過第1步拿到的card 下標，得到在cardtable的位置，標記為0 -》變髒
     AddressLiteral cardtable((address)ct->byte_map_base, relocInfo::none);
     Address index(noreg, obj, Address::times_1);
     movb(as_Address(ArrayAddress(cardtable, index)), 0);
@@ -4906,13 +4932,15 @@ void MacroAssembler::load_heap_oop_not_null(Register dst, Address src) {
 
 void MacroAssembler::store_heap_oop(Address dst, Register src) {
 #ifdef _LP64
+  // 指針壓縮
   if (UseCompressedOops) {
     assert(!dst.uses(src), "not enough registers");
+    // 編碼成壓縮後
     encode_heap_oop(src);
-    movl(dst, src);
+    movl(dst, src);// 更新壓縮後的
   } else
 #endif
-    movptr(dst, src);
+    movptr(dst, src);// 就是用src的寄存器的值（地址）更新到dst地址上
 }
 
 void MacroAssembler::cmp_heap_oop(Register src1, Address src2, Register tmp) {

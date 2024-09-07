@@ -429,6 +429,7 @@ void CardTableModRefBS::non_clean_card_iterate_possibly_parallel(Space* sp,
                                                                  MemRegion mr,
                                                                  OopsInGenClosure* cl,
                                                                  CardTableRS* ct) {
+  // 區域不空                                                                
   if (!mr.is_empty()) {
     // Caller (process_strong_roots()) claims that all GC threads
     // execute this call.  With UseDynamicNumberOfGCThreads now all
@@ -467,11 +468,14 @@ void CardTableModRefBS::non_clean_card_iterate_possibly_parallel(Space* sp,
 #if INCLUDE_ALL_GCS
       assert(SharedHeap::heap()->n_par_threads() ==
              SharedHeap::heap()->workers()->active_workers(), "Mismatch");
+      // 执行处理
       non_clean_card_iterate_parallel_work(sp, mr, cl, ct, n_threads);
 #else  // INCLUDE_ALL_GCS
       fatal("Parallel gc not supported here.");
 #endif // INCLUDE_ALL_GCS
     } else {
+      // 目标空间空，则清理脏卡
+
       // We do not call the non_clean_card_iterate_serial() version below because
       // we want to clear the cards (which non_clean_card_iterate_serial() does not
       // do for us): clear_cl here does the work of finding contiguous dirty ranges
@@ -581,18 +585,22 @@ void CardTableModRefBS::dirty_card_iterate(MemRegion mr,
     MemRegion mri = mr.intersection(_covered[i]);
     if (!mri.is_empty()) {
       jbyte *cur_entry, *next_entry, *limit;
+      // 大概就是遍歷全部字節
       for (cur_entry = byte_for(mri.start()), limit = byte_for(mri.last());
            cur_entry <= limit;
            cur_entry  = next_entry) {
-        next_entry = cur_entry + 1;
+        next_entry = cur_entry + 1;// 地址字節+1
+        // 判斷cur_entry 是否==dirty 狀態
         if (*cur_entry == dirty_card) {
           size_t dirty_cards;
           // Accumulate maximal dirty card range, starting at cur_entry
+          // 連續髒卡處理
           for (dirty_cards = 1;
                next_entry <= limit && *next_entry == dirty_card;
                dirty_cards++, next_entry++);
           MemRegion cur_cards(addr_for(cur_entry),
                               dirty_cards*card_size_in_words);
+          // 執行處理函數                    
           cl->do_MemRegion(cur_cards);
         }
       }

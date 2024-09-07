@@ -90,12 +90,14 @@ class YoungList : public CHeapObj<mtGC> {
 private:
   G1CollectedHeap* _g1h;
 
+  // 链表head
   HeapRegion* _head;
 
+  // suvivor region链表
   HeapRegion* _survivor_head;
   HeapRegion* _survivor_tail;
 
-  HeapRegion* _curr;
+  HeapRegion* _curr;// 当前分配使用的region
 
   uint        _length;
   uint        _survivor_length;
@@ -158,6 +160,7 @@ public:
   void          print();
 };
 
+// 业务线程分配对象使用的region
 class MutatorAllocRegion : public G1AllocRegion {
 protected:
   virtual HeapRegion* allocate_new_region(size_t word_size, bool force);
@@ -503,6 +506,7 @@ protected:
   // an allocation of the given word_size. If do_expand is true,
   // attempt to expand the heap if necessary to satisfy the allocation
   // request.
+  // 创建一个非大对象的region
   HeapRegion* new_region(size_t word_size, bool do_expand);
 
   // Attempt to satisfy a humongous allocation request of the given
@@ -604,6 +608,7 @@ protected:
   // allocation region, either by picking one or expanding the
   // heap, and then allocate a block of the given size. The block
   // may not be a humongous - it must fit into a single heap region.
+  // gc中申请对象
   HeapWord* par_allocate_during_gc(GCAllocPurpose purpose, size_t word_size);
 
   // Ensure that no further allocations can happen in "r", bearing in mind
@@ -1928,6 +1933,9 @@ protected:
   template <class T> void deferred_rs_update(HeapRegion* from, T* p, int tid) {
     // If the new value of the field points to the same region or
     // is the to-space, we don't need to include it in the Rset updates.
+    // 过滤实现-》2种条件下不执行
+    // 1. 新的跟旧的在同一个reigon
+    // 2. 
     if (!from->is_in_reserved(oopDesc::load_decode_heap_oop(p)) && !from->is_survivor()) {
       size_t card_index = ctbs()->index_for(p);
       // If the card hasn't been added to the buffer, do it.
@@ -1966,19 +1974,19 @@ public:
   }
 
   template <class T> void update_rs(HeapRegion* from, T* p, int tid) {
-    if (G1DeferredRSUpdate) {
+    if (G1DeferredRSUpdate) {// 默认true，延迟更新rs-》写入log buffer
       deferred_rs_update(from, p, tid);
     } else {
       immediate_rs_update(from, p, tid);
     }
   }
-
+  // 慢速分配
   HeapWord* allocate_slow(GCAllocPurpose purpose, size_t word_sz) {
     HeapWord* obj = NULL;
     size_t gclab_word_size = _g1h->desired_plab_sz(purpose);
     if (word_sz * 100 < gclab_word_size * ParallelGCBufferWastePct) {
       G1ParGCAllocBufferContainer* alloc_buf = alloc_buffer(purpose);
-
+      // 执行gc中分配对象（suvivor or old）
       HeapWord* buf = _g1h->par_allocate_during_gc(purpose, gclab_word_size);
       if (buf == NULL) return NULL; // Let caller handle allocation failure.
 
@@ -1988,6 +1996,7 @@ public:
       obj = alloc_buf->allocate(word_sz);
       assert(obj != NULL, "buffer was definitely big enough...");
     } else {
+      // 执行gc中分配对象（suvivor or old）
       obj = _g1h->par_allocate_during_gc(purpose, word_sz);
     }
     return obj;

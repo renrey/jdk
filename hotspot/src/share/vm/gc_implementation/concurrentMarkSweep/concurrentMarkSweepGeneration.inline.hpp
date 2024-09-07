@@ -143,12 +143,14 @@ inline MemRegion CMSBitMap::getAndClearMarkedRegion(HeapWord* start_addr,
                                                     HeapWord* end_addr) {
   HeapWord *start, *end;
   assert_locked();
+  // 找到第一個dirty的地址
   start = getNextMarkedWordAddress  (start_addr, end_addr);
+  // 找到這連續dirty最後地址
   end   = getNextUnmarkedWordAddress(start,      end_addr);
   assert(start <= end, "Consistency check");
   MemRegion mr(start, end);
   if (!mr.is_empty()) {
-    clear_range(mr);
+    clear_range(mr);// 清理掉-》clean
   }
   return mr;
 }
@@ -511,6 +513,7 @@ inline void ModUnionClosure::do_MemRegion(MemRegion mr) {
   // we should do better than this XXX
   MemRegion mr2(mr.start(), (HeapWord*)round_to((intptr_t)mr.end(),
                  CardTableModRefBS::card_size /* bytes */));
+  // CMSBitMap中   mr這片區域            
   _t->mark_range(mr2);
 }
 

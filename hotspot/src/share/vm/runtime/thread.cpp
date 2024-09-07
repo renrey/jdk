@@ -2760,7 +2760,7 @@ void JavaThread::oops_do(OopClosure* f, CLDToOopClosure* cld_f, CodeBlobClosure*
     for (MonitorChunk* chunk = monitor_chunks(); chunk != NULL; chunk = chunk->next()) {
       chunk->oops_do(f);
     }
-
+    // 遍歷棧幀，對局部變量表的地址
     // Traverse the execution stack
     for(StackFrameStream fst(this); !fst.is_done(); fst.next()) {
       fst.current()->oops_do(f, cld_f, cf, fst.register_map());
@@ -4180,9 +4180,11 @@ bool Threads::includes(JavaThread* p) {
 // all threads gets blocked when exiting or starting).
 
 void Threads::oops_do(OopClosure* f, CLDToOopClosure* cld_f, CodeBlobClosure* cf) {
+  // 遍歷每個綫程執行
   ALL_JAVA_THREADS(p) {
     p->oops_do(f, cld_f, cf);
   }
+  // 然後vm綫程執行
   VMThread::vm_thread()->oops_do(f, cld_f, cf);
 }
 

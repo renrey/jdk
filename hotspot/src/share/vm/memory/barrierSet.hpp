@@ -30,7 +30,7 @@
 
 // This class provides the interface between a barrier implementation and
 // the rest of the system.
-
+// Barrier集合 -> pre write、post等
 class BarrierSet: public CHeapObj<mtGC> {
   friend class VMStructs;
 public:

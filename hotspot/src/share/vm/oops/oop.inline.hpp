@@ -628,9 +628,10 @@ inline void oopDesc::forward_to(oop p) {
          "forwarding to something not aligned");
   assert(Universe::heap()->is_in_reserved(p),
          "forwarding to something not in heap");
+  // 把新的markword设置成11（marked）       
   markOop m = markOopDesc::encode_pointer_as_mark(p);
   assert(m->decode_pointer() == p, "encoding must be reversable");
-  set_mark(m);
+  set_mark(m);// 更新到当前（老）对象的markword
 }
 
 // Used by parallel scavengers

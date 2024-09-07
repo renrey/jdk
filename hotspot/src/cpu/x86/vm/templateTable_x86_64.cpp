@@ -129,7 +129,7 @@ static Assembler::Condition j_not(TemplateTable::Condition cc) {
 // Miscelaneous helper routines
 // Store an oop (or NULL) at the address described by obj.
 // If val == noreg this means store a NULL
-
+// 更新引用
 static void do_oop_store(InterpreterMacroAssembler* _masm,
                          Address obj,
                          Register val,
@@ -147,8 +147,9 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
             __ movq(rdx, obj.base());
           }
         } else {
-          __ leaq(rdx, obj);
+          __ leaq(rdx, obj);// 解析obj放到rdx
         }
+        // 执行写屏障(前)，主要记录pre
         __ g1_write_barrier_pre(rdx /* obj */,
                                 rbx /* pre_val */,
                                 r15_thread /* thread */,
@@ -156,15 +157,19 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
                                 val != noreg /* tosca_live */,
                                 false /* expand_call */);
         if (val == noreg) {
+          // 更新null
           __ store_heap_oop_null(Address(rdx, 0));
         } else {
           // G1 barrier needs uncompressed oop for region cross check.
           Register new_val = val;
+          // 指针压缩处理
           if (UseCompressedOops) {
             new_val = rbx;
             __ movptr(new_val, val);
           }
+          // 保存指针，rdx就存儲地址的地方
           __ store_heap_oop(Address(rdx, 0), val);
+          // 执行写屏障(后)，处理新值，脏卡标记
           __ g1_write_barrier_post(rdx /* store_adr */,
                                    new_val /* new_val */,
                                    r15_thread /* thread */,
@@ -180,7 +185,10 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
         if (val == noreg) {
           __ store_heap_oop_null(obj);
         } else {
+          //更新指针
           __ store_heap_oop(obj, val);
+
+          // 單純把card dirty
           // flatten object address if needed
           if (!precise || (obj.index() == noreg && obj.disp() == 0)) {
             __ store_check(obj.base());
@@ -955,13 +963,14 @@ void TemplateTable::dastore() {
            xmm0);
 }
 
+// 数组中更新值
 void TemplateTable::aastore() {
   Label is_null, ok_is_subtype, done;
   transition(vtos, vtos);
   // stack: ..., array, index, value
-  __ movptr(rax, at_tos());    // value
-  __ movl(rcx, at_tos_p1()); // index
-  __ movptr(rdx, at_tos_p2()); // array
+  __ movptr(rax, at_tos());    // value -》rax
+  __ movl(rcx, at_tos_p1()); // index -》rcx
+  __ movptr(rdx, at_tos_p2()); // array -》rdx
 
   Address element_address(rdx, rcx,
                           UseCompressedOops? Address::times_4 : Address::times_8,
@@ -970,8 +979,10 @@ void TemplateTable::aastore() {
   index_check(rdx, rcx);     // kills rbx
   // do array store check - check for NULL value first
   __ testptr(rax, rax);
+  // 新值是null，跳到isNull
   __ jcc(Assembler::zero, is_null);
 
+  // 加载父klass、子klass
   // Move subklass into rbx
   __ load_klass(rbx, rax);
   // Move superklass into rax
@@ -983,26 +994,31 @@ void TemplateTable::aastore() {
 
   // Generate subtype check.  Blows rcx, rdi
   // Superklass in rax.  Subklass in rbx.
+  // 子klass校验
   __ gen_subtype_check(rbx, ok_is_subtype);
 
+  // 子klass校验失败，执行_throw_ArrayStoreException_entry，下面就没得执行了
   // Come here on failure
   // object is at TOS
   __ jump(ExternalAddress(Interpreter::_throw_ArrayStoreException_entry));
 
+  // 子klass验证成功，执行
   // Come here on success
   __ bind(ok_is_subtype);
 
   // Get the value we will store
   __ movptr(rax, at_tos());
+  // 执行指针更新，且执行屏障
   // Now store using the appropriate barrier
   do_oop_store(_masm, Address(rdx, 0), rax, _bs->kind(), true);
   __ jmp(done);
 
   // Have a NULL in rax, rdx=array, ecx=index.  Store NULL at ary[idx]
+  // 新值null，执行更新
   __ bind(is_null);
   __ profile_null_seen(rbx);
 
-  // Store a NULL
+  // Store a NULL，更新成null
   do_oop_store(_masm, element_address, noreg, _bs->kind(), true);
 
   // Pop stack arguments
@@ -2474,6 +2490,7 @@ void TemplateTable::jvmti_post_field_mod(Register cache, Register index, bool is
   }
 }
 
+// 赋值保存
 void TemplateTable::putfield_or_static(int byte_no, bool is_static) {
   transition(vtos, vtos);
 
@@ -2494,7 +2511,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static) {
 
   Label notVolatile, Done;
   __ movl(rdx, flags);
-  __ shrl(rdx, ConstantPoolCacheEntry::is_volatile_shift);
+  __ shrl(rdx, ConstantPoolCacheEntry::is_volatile_shift);// volatile标志更新到rdx
   __ andl(rdx, 0x1);
 
   // field address
@@ -2506,8 +2523,18 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static) {
   __ shrl(flags, ConstantPoolCacheEntry::tos_state_shift);
 
   assert(btos == 0, "change code, btos != 0");
+  // 判断是否执行byte处理
   __ andl(flags, ConstantPoolCacheEntry::tos_state_mask);
-  __ jcc(Assembler::notZero, notByte);
+  __ jcc(Assembler::notZero, notByte);// 后四位不是全0，跳过byte -》byte就是0，
+  // 其实就是用了4个bit（0-8）来表示数据类型
+
+  // 下面各种xtos就是对应数据类型处理
+
+  // 通用逻辑：1. 判断flags是否对应类型，是则执行
+  // 2. 从对应类型栈中，pop数据
+  // 3。更新
+  // 4. 非静态变量执行_fast_Xputfield -》即fast_storefield
+
 
   // btos
   {
@@ -2522,22 +2549,28 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static) {
 
   __ bind(notByte);
   __ cmpl(flags, atos);
-  __ jcc(Assembler::notEqual, notObj);
+  // 跳过obj处理
+  __ jcc(Assembler::notEqual, notObj);// flags不等于atos
 
+  // object处理
   // atos
   {
     __ pop(atos);
     if (!is_static) pop_and_check_object(obj);
     // Store into the field
+    // 存储指针到field，然后完成
     do_oop_store(_masm, field, rax, _bs->kind(), false);
+    // 非静态变量，转到执行_fast_aputfield
     if (!is_static) {
       patch_bytecode(Bytecodes::_fast_aputfield, bc, rbx, true, byte_no);
     }
     __ jmp(Done);
   }
 
+  // 跳过处理object类型
   __ bind(notObj);
   __ cmpl(flags, itos);
+  // 跳过int处理
   __ jcc(Assembler::notEqual, notInt);
 
   // itos
@@ -2617,7 +2650,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static) {
   __ jcc(Assembler::notEqual, notDouble);
 #endif
 
-  // dtos
+  // dtos（double）
   {
     __ pop(dtos);
     if (!is_static) pop_and_check_object(obj);
@@ -2639,6 +2672,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static) {
   // Check for volatile store
   __ testl(rdx, rdx);
   __ jcc(Assembler::zero, notVolatile);
+  // volatile 屏障
   volatile_barrier(Assembler::Membar_mask_bits(Assembler::StoreLoad |
                                                Assembler::StoreStore));
   __ bind(notVolatile);
@@ -2713,6 +2747,7 @@ void TemplateTable::fast_storefield(TosState state) {
   jvmti_post_fast_field_mod();
 
   // access constant pool cache
+  // 訪問常量池獲取信息，放到rcx、rbx
   __ get_cache_and_index_at_bcp(rcx, rbx, 1);
 
   // test for volatile with rdx
@@ -2736,11 +2771,13 @@ void TemplateTable::fast_storefield(TosState state) {
   pop_and_check_object(rcx);
 
   // field address
+  // 存儲對象地址的地方
   const Address field(rcx, rbx, Address::times_1);
 
+  // 此時就是把rax的內容（新值）更新到field地址下
   // access field
   switch (bytecode()) {
-  case Bytecodes::_fast_aputfield:
+  case Bytecodes::_fast_aputfield:// object
     do_oop_store(_masm, field, rax, _bs->kind(), false);
     break;
   case Bytecodes::_fast_lputfield:

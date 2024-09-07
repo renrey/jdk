@@ -138,6 +138,7 @@ public:
 
   void set_try_claimed() { _try_claimed = true; }
 
+  // 核心：扫描card操作
   void scanCard(size_t index, HeapRegion *r) {
     // Stack allocate the DirtyCardToOopClosure instance
     HeapRegionDCTOC cl(_g1h, r, _oc,
@@ -156,7 +157,7 @@ public:
       // but they're benign), which reduces the number of duplicate
       // scans (the rsets of the regions in the cset can intersect).
       _ct_bs->set_card_claimed(index);
-      _cards_done++;
+      _cards_done++;// 计算+1
       cl.do_MemRegion(mr);
     }
   }
@@ -256,6 +257,7 @@ void G1RemSet::scanRS(OopsInHeapRegionClosure* oc,
                             - scanRScl.strong_code_root_scan_time_sec();
 
   assert(_cards_scanned != NULL, "invariant");
+  // worker 扫描card数量
   _cards_scanned[worker_i] = scanRScl.cards_done();
 
   _g1p->phase_times()->record_scan_rs_time(worker_i, scan_rs_time_sec * 1000.0);
@@ -371,13 +373,15 @@ void G1RemSet::oops_into_collection_set_do(OopsInHeapRegionClosure* oc,
 }
 
 void G1RemSet::prepare_for_oops_into_collection_set_do() {
-  cleanupHRRS();
+  cleanupHRRS();//清空全局remset
   ConcurrentG1Refine* cg1r = _g1->concurrent_g1_refine();
+  // refine 关闭？
   _g1->set_refine_cte_cl_concurrency(false);
   DirtyCardQueueSet& dcqs = JavaThread::dirty_card_queue_set();
   dcqs.concatenate_logs();
 
   guarantee( _cards_scanned == NULL, "invariant" );
+  // 申请数组空间，存放每个worker扫描的card
   _cards_scanned = NEW_C_HEAP_ARRAY(size_t, n_workers(), mtGC);
   for (uint i = 0; i < n_workers(); ++i) {
     _cards_scanned[i] = 0;
@@ -454,7 +458,7 @@ void G1RemSet::cleanup_after_oops_into_collection_set_do() {
   }
   FREE_C_HEAP_ARRAY(size_t, _cards_scanned, mtGC);
   _cards_scanned = NULL;
-  // Cleanup after copy
+  // Cleanup after copy（已经copy完）
   _g1->set_refine_cte_cl_concurrency(true);
   // Set all cards back to clean.
   _g1->cleanUpCardTable();

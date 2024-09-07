@@ -615,8 +615,11 @@ void ParNewGenTask::work(uint worker_id) {
   int so = SharedHeap::SO_AllClasses | SharedHeap::SO_Strings | SharedHeap::SO_CodeCache;
 
   par_scan_state.start_strong_roots();
-  gch->gen_process_strong_roots(_gen->level(),
-                                true,  // Process younger gens, if any,
+  // 掃描gcroot
+  // 掃描年輕代
+  // 掃描老年代
+  gch->gen_process_strong_roots(_gen->level(),// 這裡是0，即掃描老年代
+                                true,  // Process younger gens, if any,掃描年輕代
                                        // as strong roots.
                                 false, // no scope; this is parallel code
                                 true,  // is scavenging
@@ -964,6 +967,7 @@ void ParNewGeneration::collect(bool   full,
   age_table()->clear();
   to()->clear(SpaceDecorator::Mangle);
 
+  // 記錄當前分配到對象的地址（用於suvivor遍歷新對象）
   gch->save_marks();
   assert(workers != NULL, "Need parallel worker threads.");
   int n_workers = active_workers;

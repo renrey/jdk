@@ -66,6 +66,7 @@ class GCCause : public AllStatic {
     _old_generation_too_full_to_scavenge,
     _adaptive_size_policy,
 
+    //g1的2种gc pause 
     _g1_inc_collection_pause,
     _g1_humongous_allocation,
 

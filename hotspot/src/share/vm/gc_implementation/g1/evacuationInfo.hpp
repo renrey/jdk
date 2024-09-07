@@ -28,7 +28,7 @@
 #include "memory/allocation.hpp"
 
 class EvacuationInfo : public StackObj {
-  uint _collectionset_regions;
+  uint _collectionset_regions;// 需要被收集region
   uint _allocation_regions;
   size_t _collectionset_used_before;
   size_t _collectionset_used_after;

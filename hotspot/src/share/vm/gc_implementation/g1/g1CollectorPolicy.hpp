@@ -340,6 +340,7 @@ public:
   }
 
   double predict_young_cards_per_entry_ratio() {
+    // 预测计算
     return get_new_prediction(_young_cards_per_entry_ratio_seq);
   }
 
@@ -352,6 +353,8 @@ public:
   }
 
   size_t predict_young_card_num(size_t rs_length) {
+    // young_cards_per_entry_ratio = 1次gc扫描过的card /rs_length 
+    // 因为每个region大小不是固定，所以remset大小也不固定
     return (size_t) ((double) rs_length *
                      predict_young_cards_per_entry_ratio());
   }
@@ -363,6 +366,7 @@ public:
 
   double predict_rs_scan_time_ms(size_t card_num) {
     if (gcs_are_young()) {
+      // card数量 * 扫描1个card需要的时间
       return (double) card_num * get_new_prediction(_cost_per_entry_ms_seq);
     } else {
       return predict_mixed_rs_scan_time_ms(card_num);
@@ -392,6 +396,7 @@ public:
     if (_in_marking_window && !_in_marking_window_im) {
       return predict_object_copy_time_ms_during_cm(bytes_to_copy);
     } else {
+      // 每个b copy的时间 * 字节数
       return (double) bytes_to_copy *
               get_new_prediction(_cost_per_byte_ms_seq);
     }

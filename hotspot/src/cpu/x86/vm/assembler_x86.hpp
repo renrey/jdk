@@ -1243,6 +1243,7 @@ private:
         // Any change to this code may need to revisit other places in
         // the code where this idiom is used, in particular the
         // orderAccess code.
+        // 经典实现：先lock，再addl 空
         lock();
         addl(Address(rsp, 0), 0);// Assert the lock# signal here
       }

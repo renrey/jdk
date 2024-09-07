@@ -101,10 +101,15 @@ FastEvacuateFollowersClosure(GenCollectedHeap* gch, int level,
 {}
 
 void DefNewGeneration::FastEvacuateFollowersClosure::do_void() {
+  // 一直循环，直到（3个space）save_mark达到top
   do {
+    // 实际DefNewGeneration::oop_since_save_marks_iterate ——》对eden、to、from执行（實際只有suvivor）
+    // ContiguousSpace::oop_since_save_marks_iterate
     _gch->oop_since_save_marks_iterate(_level, _scan_cur_or_nonheap,
                                        _scan_older);
   } while (!_gch->no_allocs_since_save_marks(_level));
+
+
   guarantee(_gen->promo_failure_scan_is_complete(), "Failed to finish scan");
 }
 
@@ -122,6 +127,7 @@ FastScanClosure::FastScanClosure(DefNewGeneration* g, bool gc_barrier) :
     OopsInKlassOrGenClosure(g), _g(g), _gc_barrier(gc_barrier)
 {
   assert(_g->level() == 0, "Optimized for youngest generation");
+  // 當前年輕代內存界限
   _boundary = _g->reserved().end();
 }
 
@@ -514,7 +520,7 @@ void DefNewGeneration::space_iterate(SpaceClosure* blk,
   blk->do_space(to());// ContiguousSpace
 }
 
-// The last collection bailed out, we are running out of heap space,
+// The last collection bailed ou t, we are running out of heap space,
 // so we try to allocate the from-space, too.
 HeapWord* DefNewGeneration::allocate_from_space(size_t size) {
   HeapWord* result = NULL;
@@ -584,7 +590,7 @@ void DefNewGeneration::collect(bool   full,
     if (Verbose && PrintGCDetails) {
       gclog_or_tty->print(" :: Collection attempt not safe :: ");
     }
-    gch->set_incremental_collection_failed(); // Slight lie: we did not even attempt one
+    gch-> set_incremental_collection_failed(); // Slight lie: we did not even attempt one
     return;
   }
   assert(to()->is_empty(), "Else not collection_attempt_is_safe");
@@ -616,8 +622,8 @@ void DefNewGeneration::collect(bool   full,
 
   // 2个FastScanClosure函数 （就是执行不执行gc_barrier）
   FastScanClosure fsc_with_no_gc_barrier(this, false);
-  FastScanClosure fsc_with_gc_barrier(this, true);
-
+  FastScanClosure fsc_with_gc_barrier(this, true);// gc屏障：如果执行copy，标记对应suvivor区域的card
+  // 被老年代对象引用的发生copy后，需要标记新位置 -》cardtable中年轻代的位置表示被老年代引用的
 
   // 负责扫描klass的KlassScanClosure函数
   KlassScanClosure klass_scan_closure(&fsc_with_no_gc_barrier,
@@ -626,16 +632,18 @@ void DefNewGeneration::collect(bool   full,
   // 晋升失败对象的处理        FastEvacuateFollowersClosure                            
   set_promo_failure_scan_stack_closure(&fsc_with_no_gc_barrier);
   FastEvacuateFollowersClosure evacuate_followers(gch, _level, this,
-                                                  &fsc_with_no_gc_barrier,
-                                                  &fsc_with_gc_barrier);
+                                                  &fsc_with_no_gc_barrier,// 年轻代执行无屏障
+                                                  &fsc_with_gc_barrier);// 老年代的引用，发生copy执行gc屏障
 
   assert(gch->no_allocs_since_save_marks(0),
          "save marks have not been newly set.");
 
   int so = SharedHeap::SO_AllClasses | SharedHeap::SO_Strings | SharedHeap::SO_CodeCache;
-
-  // 扫描当前代（年轻代）
-  gch->gen_process_strong_roots(_level,
+  // 注意：一般前面已對3個年輕代space進行save_mark操作（saved_mark=top），用于第二阶段的遍历
+  // 扫描gcroot 执行copy
+  // 1. 先对强gcroot进行copy，此时存活的在新suvivor 或者晋升到老年代
+  // 2. 通过remset扫描老年代的引用（会清理老年代的card、执行copy或晋升、重新标记card），如果是copy，对新s执行gc屏障，标记下来
+  gch->gen_process_strong_roots(_level,// 此时level=0，不会执行扫描年轻代
                                 true,  // Process younger gens, if any,
                                        // as strong roots.
                                 true,  // activate StrongRootsScope
@@ -643,10 +651,19 @@ void DefNewGeneration::collect(bool   full,
                                 SharedHeap::ScanningOption(so),
                                 &fsc_with_no_gc_barrier, // 非老年代使用无barrier
                                 true,   // walk *all* scavengable nmethods
-                                &fsc_with_gc_barrier, // 老年代的使用有gc_barrier
+                                &fsc_with_gc_barrier, // 老年代的使用有gc_barrier（就是年輕代copy完成後，遍歷老年代更新rs用來記錄哪些指向年輕代）
                                 &klass_scan_closure);
 
+  // 等于root的都完成回收操作，下面的是后面子递归扫描
+
+  // 此時suvivor的space的top發生了改變
+                              
   // "evacuate followers".
+  // 主要對suvivor區的新對象（存活）進行遍歷，copy子對象
+  // 還有老年代的晉升對象
+  // 直到這2個的saved_top=top-》
+  //  因為掃完子對象，如果有發生copy，top變化了，然後這些被copy也沒掃描子引用，所以使用mark來代表已掃描對象地址
+  //  然後這樣子2個代也可能相互影響
   evacuate_followers.do_void();
 
   FastKeepAliveClosure keep_alive(this, &scan_weak_ref);
@@ -671,6 +688,8 @@ void DefNewGeneration::collect(bool   full,
       // other spaces.
       to()->mangle_unused_area();
     }
+
+    // 交换suvivorspace
     swap_spaces();
 
     assert(to()->is_empty(), "to space should be empty now");
@@ -823,13 +842,13 @@ oop DefNewGeneration::copy_to_survivor_space(oop old) {
   // Try allocating obj in to-space (unless too old)
   // 分配到另一个suvivor
   // 年龄判断的地方！！！
-  if (old->age() < tenuring_threshold()) {
+  if (old->age() < tenuring_threshold()) {// 当前age未超过，在to s 申请空间
     // 分配这个对象在新地方（suvivor）的内存空间
     obj = (oop) to()->allocate(s);
   }
 
   // Otherwise try allocating obj tenured
-  // 可能年龄过了or分配失败（申请分配内存空间失败），尝试晋升
+  // 可能年龄过了or 申请to s空间失败（申请分配内存空间失败），尝试晋升
   if (obj == NULL) {
     // 进行晋升
     obj = _next_gen->promote(old, s);
@@ -838,16 +857,19 @@ oop DefNewGeneration::copy_to_survivor_space(oop old) {
       handle_promotion_failure(old);
       return old;
     }
-    // 到这里等于，就是晋升到老年代的空间
+    // 到这里，就是晋升到老年代的空间，还需要执行插入前向指针
+
   // 无须晋升  
   } else {
+    // 申请to s新空间成功
+
     // Prefetch beyond obj
     // Prefetch指令预先读取到缓存
     const intx interval = PrefetchCopyIntervalInBytes;
     Prefetch::write(obj, interval);
 
     // Copy obj
-    // 拷贝到新地址
+    // 拷贝对象内容到新地址
     Copy::aligned_disjoint_words((HeapWord*)old, (HeapWord*)obj, s);
 
     // Increment age if obj still in new generation
@@ -858,8 +880,8 @@ oop DefNewGeneration::copy_to_survivor_space(oop old) {
   }
 
   // Done, insert forward pointer to obj in this header
-  // 往插入前向指针
-  old->forward_to(obj);
+  // 往插入前向指针到新位置的header
+  old->forward_to(obj);// 实际把老对象的markword标记11（可回收）
 
   return obj;
 }
@@ -875,6 +897,7 @@ void DefNewGeneration::drain_promo_failure_scan_stack() {
 }
 
 void DefNewGeneration::save_marks() {
+  // 3个空间的saved_mark都更新成top
   eden()->set_saved_mark();
   to()->set_saved_mark();
   from()->set_saved_mark();
@@ -898,12 +921,12 @@ bool DefNewGeneration::no_allocs_since_save_marks() {
                                                                 \
 void DefNewGeneration::                                         \
 oop_since_save_marks_iterate##nv_suffix(OopClosureType* cl) {   \
-  cl->set_generation(this);                                     \
+  cl->set_generation(this); /**3个space分别遍历*/                                    \
   eden()->oop_since_save_marks_iterate##nv_suffix(cl);          \
   to()->oop_since_save_marks_iterate##nv_suffix(cl);            \
   from()->oop_since_save_marks_iterate##nv_suffix(cl);          \
   cl->reset_generation();                                       \
-  save_marks();                                                 \
+  save_marks();/**更新3个space 的saved_mark成top*/                                                 \
 }
 
 ALL_SINCE_SAVE_MARKS_CLOSURES(DefNew_SINCE_SAVE_MARKS_DEFN)

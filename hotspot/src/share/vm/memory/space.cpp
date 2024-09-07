@@ -84,6 +84,7 @@ void DirtyCardToOopClosure::walk_mem_region(MemRegion mr,
   // version of oop_iterate() for all but the extremal objects
   // (for which we need to call the MemRegion version of
   // oop_iterate()) To be done post-beta XXX
+  // 開始遍歷，對對象的子引用對象執行cl
   for (; bottom < top; bottom += _sp->block_size(bottom)) {
     // As in the case of contiguous space above, we'd like to
     // just use the value returned by oop_iterate to increment the
@@ -696,35 +697,38 @@ void ContiguousSpace::oop_iterate(MemRegion mr, ExtendedOopClosure* blk) {
   }
   // 获取当前内存的card marking
   MemRegion cur = MemRegion(bottom(), top());
-  // 取交集
+  // 取交集后的区域
   mr = mr.intersection(cur);
   // 没有交集，不用继续
   if (mr.is_empty()) {
     return;
   }
-  if (mr.equals(cur)) {
+  if (mr.equals(cur)) {// 都是空，or start跟end地址都一样
     oop_iterate(blk);// 遍历执行blk
     return;
   }
   assert(mr.end() <= top(), "just took an intersection above");
   HeapWord* obj_addr = block_start(mr.start());
-  HeapWord* t = mr.end();
+  HeapWord* t = mr.end();// 参数的终止位置
 
   // Handle first object specially.
   oop obj = oop(obj_addr); // 第1个对象
   SpaceMemRegionOopsIterClosure smr_blk(blk, mr);
-  obj_addr += obj->oop_iterate(&smr_blk);
+  // 其实就是对当前obj的属性引用对象执行smr_blk
+  obj_addr += obj->oop_iterate(&smr_blk);// obj_addr下个对象地址
+
+  // 遍历到的对象obj_addr 不超过参数
   while (obj_addr < t) {
     oop obj = oop(obj_addr);
     assert(obj->is_oop(), "expected an oop");
-    obj_addr += obj->size();
+    obj_addr += obj->size();// 下1个地址
     // If "obj_addr" is not greater than top, then the
     // entire object "obj" is within the region.
     if (obj_addr <= t) {
       obj->oop_iterate(blk);
     } else {
       // "obj" extends beyond end of region
-      obj->oop_iterate(&smr_blk);
+      obj->oop_iterate(&smr_blk);// 执行完最后1个
       break;
     }
   };
@@ -766,6 +770,7 @@ ContiguousSpace::object_iterate_careful(ObjectClosureCareful* blk) {
   return NULL; // all done
 }
 
+// 主要从save_mark到top的对象执行（引用子对象执行blk）
 #define ContigSpace_OOP_SINCE_SAVE_MARKS_DEFN(OopClosureType, nv_suffix)  \
                                                                           \
 void ContiguousSpace::                                                    \
@@ -777,15 +782,15 @@ oop_since_save_marks_iterate##nv_suffix(OopClosureType* blk) {            \
   const intx interval = PrefetchScanIntervalInBytes;                      \
   do {                                                                    \
     t = top();                                                            \
-    while (p < t) {                                                       \
+    while (p < t) {/**从saved_mark到top*/                                                       \
       Prefetch::write(p, interval);                                       \
       debug_only(HeapWord* prev = p);                                     \
       oop m = oop(p);                                                     \
-      p += m->oop_iterate(blk);                                           \
+      p += m->oop_iterate(blk);/**对m的引用对象执行blk*/                                           \
     }                                                                     \
-  } while (t < top());                                                    \
+  } while (t < top());/**如果有新的，则继续*/                                                    \
                                                                           \
-  set_saved_mark_word(p);                                                 \
+  set_saved_mark_word(p);/**更新saved_mark*/                                                 \
 }
 
 ALL_SINCE_SAVE_MARKS_CLOSURES(ContigSpace_OOP_SINCE_SAVE_MARKS_DEFN)

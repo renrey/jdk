@@ -708,6 +708,7 @@ class HeapRegion: public G1OffsetTableContigSpace {
     }
   }
 
+  // 3种更新region类型方法
   void set_young() { set_young_type(Young); }
 
   void set_survivor() { set_young_type(Survivor); }

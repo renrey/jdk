@@ -1294,6 +1294,7 @@ void ReferenceProcessor::preclean_discovered_references(
 
   NOT_PRODUCT(verify_ok_to_handle_reflists());
 
+  // 软引用
   // Soft references
   {
     GCTraceTime tt("Preclean SoftReferences", PrintGCDetails && PrintReferenceGC,

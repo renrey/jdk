@@ -59,14 +59,14 @@ class G1MarkSweep : AllStatic {
 
  private:
 
-  // Mark live objects
+  // Mark live objects，标记存活对象
   static void mark_sweep_phase1(bool& marked_for_deopt,
                                 bool clear_all_softrefs);
-  // Calculate new addresses
+  // Calculate new addresses，计算新地址
   static void mark_sweep_phase2();
-  // Update pointers
+  // Update pointers,更新指针
   static void mark_sweep_phase3();
-  // Move objects to new positions
+  // Move objects to new positions，把对象移动到新地址
   static void mark_sweep_phase4();
 
   static void allocate_stacks();

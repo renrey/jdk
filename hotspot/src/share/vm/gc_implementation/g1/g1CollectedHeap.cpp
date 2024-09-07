@@ -1335,6 +1335,7 @@ void G1CollectedHeap::print_hrs_post_compaction() {
   heap_region_iterate(&cl);
 }
 
+// 执行fullgc
 bool G1CollectedHeap::do_collection(bool explicit_gc,
                                     bool clear_all_soft_refs,
                                     size_t word_size) {
@@ -1375,6 +1376,7 @@ bool G1CollectedHeap::do_collection(bool explicit_gc,
     TraceCPUTime tcpu(G1Log::finer(), true, gclog_or_tty);
 
     {
+      // 日志上Full GC的开头  gc
       GCTraceTime t(GCCauseString("Full GC", gc_cause()), G1Log::fine(), true, NULL);
       TraceCollectorStats tcs(g1mm()->full_collection_counters());
       TraceMemoryManagerStats tms(true /* fullGC */, gc_cause());
@@ -1398,6 +1400,7 @@ bool G1CollectedHeap::do_collection(bool explicit_gc,
       append_secondary_free_list_if_not_empty_with_lock();
 
       gc_prologue(true);
+      // gc次数+1，且是fullgc
       increment_total_collections(true /* full gc */);
       increment_old_marking_cycles_started();
 
@@ -1405,6 +1408,7 @@ bool G1CollectedHeap::do_collection(bool explicit_gc,
 
       verify_before_gc();
 
+      // 开启fullgc前dump的话，进行dump
       pre_full_gc_dump(gc_timer);
 
       COMPILER2_PRESENT(DerivedPointerTable::clear());
@@ -1439,7 +1443,7 @@ bool G1CollectedHeap::do_collection(bool explicit_gc,
       g1_policy()->stop_incremental_cset_building();
 
       tear_down_region_sets(false /* free_list_only */);
-      // 下次stw的gc = young gc
+      // 下次stw的gc = young gc ——> 重置ygc
       g1_policy()->set_gcs_are_young(true);
 
       // See the comments in g1CollectedHeap.hpp and
@@ -1455,9 +1459,11 @@ bool G1CollectedHeap::do_collection(bool explicit_gc,
       ref_processor_stw()->enable_discovery(true /*verify_disabled*/, true /*verify_no_refs*/);
       ref_processor_stw()->setup_policy(do_clear_all_soft_refs);
 
-      // Do collection work
+      // Do collection work-> 执行收集
       {
+        // 丢弃非法的handle
         HandleMark hm;  // Discard invalid handles created during gc
+        // stw执行：收集流程，包含清楚软引用
         G1MarkSweep::invoke_at_safepoint(ref_processor_stw(), do_clear_all_soft_refs);
       }
 
@@ -1505,6 +1511,7 @@ bool G1CollectedHeap::do_collection(bool explicit_gc,
         _hr_printer.end_gc(true /* full */, (size_t) total_collections());
       }
 
+      // 热卡
       G1HotCardCache* hot_card_cache = _cg1r->hot_card_cache();
       if (hot_card_cache->use_cache()) {
         hot_card_cache->reset_card_counts();
@@ -1544,6 +1551,8 @@ bool G1CollectedHeap::do_collection(bool explicit_gc,
                HeapRegion::RebuildRSClaimValue), "sanity check");
         reset_heap_region_claim_values();
       } else {
+        // 单线程下
+        // 总的就是对每个region执行rebuild
         RebuildRSOutOfRegionClosure rebuild_rs(this);
         heap_region_iterate(&rebuild_rs);
       }
@@ -1558,7 +1567,7 @@ bool G1CollectedHeap::do_collection(bool explicit_gc,
 #ifdef TRACESPINNING
       ParallelTaskTerminator::print_termination_counts();
 #endif
-
+// 丢弃rset的log
       // Discard all rset updates
       JavaThread::dirty_card_queue_set().abandon_logs();
       assert(!G1DeferredRSUpdate
@@ -1588,6 +1597,7 @@ bool G1CollectedHeap::do_collection(bool explicit_gc,
       // evacuation pause.
       clear_cset_fast_test();
 
+      // 初始化业务线程下个分配的region
       init_mutator_alloc_region();
 
       double end = os::elapsedTime();
@@ -2125,6 +2135,7 @@ jint G1CollectedHeap::initialize() {
   // rem set 
   _rem_set = collector_policy()->create_rem_set(_reserved, 2);
   // 记录barrier_set -》 使用_rem_set的
+  // G1SATBCardTableModRefBS -> 屏障种类：G1SATBCTLogging
   set_barrier_set(rem_set()->bs());
   if (!barrier_set()->is_a(BarrierSet::G1SATBCTLogging)) {
     vm_exit_during_initialization("G1 requires a G1SATBLoggingCardTableModRefBS");
@@ -3798,7 +3809,7 @@ void G1CollectedHeap::gc_epilogue(bool full /* Ignored */) {
   Universe::update_heap_info_at_gc();
 }
 
-// 执行younggc
+// 提交younggc、mgc非逻辑
 // 需要stw
 HeapWord* G1CollectedHeap::do_collection_pause(size_t word_size,
                                                unsigned int gc_count_before,
@@ -3837,11 +3848,13 @@ G1CollectedHeap::doConcurrentMark() {
 size_t G1CollectedHeap::pending_card_num() {
   size_t extra_cards = 0;
   JavaThread *curr = Threads::first();
+  // 遍历全局脏卡队列
   while (curr != NULL) {
     DirtyCardQueue& dcq = curr->dirty_card_queue();
-    extra_cards += dcq.size();
+    extra_cards += dcq.size();// 就是本线程外的
     curr = curr->next();
   }
+  // 当前线程的脏卡
   DirtyCardQueueSet& dcqs = JavaThread::dirty_card_queue_set();
   size_t buffer_size = dcqs.buffer_size();
   size_t buffer_num = dcqs.completed_buffers_num();
@@ -3849,6 +3862,7 @@ size_t G1CollectedHeap::pending_card_num() {
   // PtrQueueSet::buffer_size() and PtrQueue:size() return sizes
   // in bytes - not the number of 'entries'. We need to convert
   // into a number of cards.
+  // oopSize->64位 8 ，1个card=8b
   return (buffer_size * buffer_num + extra_cards) / oopSize;
 }
 
@@ -3940,6 +3954,7 @@ void G1CollectedHeap::reset_taskqueue_stats() {
 }
 #endif // TASKQUEUE_STATS
 
+// ygc、mgc日志 开头-》原因、什么阶段（是否初始标记）、ygc or
 void G1CollectedHeap::log_gc_header() {
   if (!G1Log::fine()) {
     return;
@@ -3948,13 +3963,19 @@ void G1CollectedHeap::log_gc_header() {
   gclog_or_tty->date_stamp(PrintGCDateStamps);
   gclog_or_tty->stamp(PrintGCTimeStamps);
 
+  // 可知PrintGC就是打印ygc、mgc，并可能具体单打印初始标记
+  // 可看到当前参数下就是下面3种格式
+  // [GC pause ($GCPause) ($yorm) ($initial-mark) 24M- >21M(64M), 0.2349730 secs]
+  // GCPause: 应该g1的2种，G1 Evacuation Pause、G1 Humongous Allocation
+  // yorm: young、mixed, 不会打印fgc
+  // initial-mark: 不是初始，则不会显示 
   GCCauseString gc_cause_str = GCCauseString("GC pause", gc_cause())
     .append(g1_policy()->gcs_are_young() ? "(young)" : "(mixed)")
     .append(g1_policy()->during_initial_mark_pause() ? " (initial-mark)" : "");
 
   gclog_or_tty->print("[%s", (const char*)gc_cause_str);
 }
-
+// PrintGC: 日志结尾-》gc前后容量变化，耗时
 void G1CollectedHeap::log_gc_footer(double pause_time_sec) {
   if (!G1Log::fine()) {
     return;
@@ -3978,6 +3999,8 @@ void G1CollectedHeap::log_gc_footer(double pause_time_sec) {
   gclog_or_tty->flush();
 }
 
+// ygc、mgc  这个gc操作需要stw
+// 非fgc都在这
 bool
 G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
   assert_at_safepoint(true /* should_be_vm_thread */);
@@ -4005,8 +4028,8 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
   // pause. If it is, during_initial_mark_pause() will return true
   // for the duration of this pause.
 
-  // 判断 处理 当前是否初始标记
-  //  是初始标记的话会更新对应标志
+  // 看是否有提交并发标记，需要则让cm线程进入cycle周期去执行
+  // 。-》cm线程开始初始标记
   g1_policy()->decide_on_conc_mark_initiation();
 
   // We do not allow initial-mark to be piggy-backed on a mixed GC.
@@ -4024,8 +4047,9 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
   // Inner scope for scope based logging, timers, and stats collection
   {
     EvacuationInfo evacuation_info;
-
+    // 统计+1
     if (g1_policy()->during_initial_mark_pause()) {
+      // 说明准备开始1个marking cycle
       // We are about to start a marking cycle, so we increment the
       // full collection counter.
       increment_old_marking_cycles_started();
@@ -4038,9 +4062,9 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
 
     int active_workers = (G1CollectedHeap::use_parallel_gc_threads() ?
                                 workers()->active_workers() : 1);
-    double pause_start_sec = os::elapsedTime();
+    double pause_start_sec = os::elapsedTime();// 开始停顿
     g1_policy()->phase_times()->note_gc_start(active_workers);
-    log_gc_header();
+    log_gc_header();// 生成打印gclog开头
 
     TraceCollectorStats tcs(g1mm()->incremental_collection_counters());
     TraceMemoryManagerStats tms(false /* fullGC */, gc_cause());
@@ -4101,6 +4125,7 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
         // We should call this after we retire the mutator alloc
         // region(s) so that all the ALLOC / RETIRE events are generated
         // before the start GC event.
+        // 非fgc
         _hr_printer.start_gc(false /* full */, (size_t) total_collections());
 
         // This timing is only used by the ergonomics to handle our pause target.
@@ -4129,14 +4154,17 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
         // root regions as it's the only way to ensure that all the
         // objects on them have been correctly scanned before we start
         // moving them during the GC.
-        // 就是说等待 cm线程异步完成从root_regions开始的扫描
+        // 必须等待 cm线程异步完成  扫描root_regions
+        // 目的为了确保在执行gc（移动这些对象）前，所有对象都被扫描到
+
+        // 等待异步扫描root_regions
         bool waited = _cm->root_regions()->wait_until_scan_finished();
         double wait_time_ms = 0.0;
         if (waited) {
           double scan_wait_end = os::elapsedTime();
           wait_time_ms = (scan_wait_end - scan_wait_start) * 1000.0;
         }
-
+        // [gc-1] 执行扫描root region，标记gcroot
         // 记录标记root region（初始標記-》標記gc root）使用的时间
         g1_policy()->phase_times()->record_root_region_scan_wait_time(wait_time_ms);
         // 即这里完成标记gc root
@@ -4144,8 +4172,9 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
         gclog_or_tty->print_cr("\nAfter recording pause start.\nYoung_list:");
         _young_list->print();
 #endif // YOUNG_LIST_VERBOSE
-        // 并发标记前执行的
+        // 并发标记前执行的 还在
         if (g1_policy()->during_initial_mark_pause()) {
+          // 里面好像不是重点
           concurrent_mark()->checkpointRootsInitialPre();
         }
 
@@ -4154,8 +4183,9 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
         _young_list->print();
         g1_policy()->print_collection_set(g1_policy()->inc_cset_head(), gclog_or_tty);
 #endif // YOUNG_LIST_VERBOSE
-
-        // 这里用到了停止时间
+        // [gc-2]选择region，生成cset
+        // 生成本次回收需要的cset region（包含young、old）
+        // 并且生成每部分（全局rs、young region、old region）的总预测时间
         g1_policy()->finalize_cset(target_pause_time_ms, evacuation_info);
 
         _cm->note_start_of_gc();// 记录开始
@@ -4171,8 +4201,9 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
                                  true  /* verify_fingers */);
         // 这里只是打印cset的region的所属                         
         if (_hr_printer.is_active()) {
-          // 本次的收集集合
+          // 本次的收集集合 -》具体操作了cset
           HeapRegion* hr = g1_policy()->collection_set();
+          // ygc就是 s、e，mgc还包含old
           while (hr != NULL) {
             G1HRPrinter::RegionType type;
             if (!hr->is_young()) {
@@ -4214,13 +4245,14 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
                                  true  /* verify_thread_buffers */,
                                  true  /* verify_fingers */);
 
-        // 释放cset空间
+        // 释放cset对应的空间
         free_collection_set(g1_policy()->collection_set(), evacuation_info);
-        g1_policy()->clear_collection_set();
+        g1_policy()->clear_collection_set();// 清理cset
 
         cleanup_surviving_young_words();
 
         // Start a new incremental collection set for the next pause.
+        // 开启新一轮inc_cset记录
         g1_policy()->start_incremental_cset_building();
 
         // Clear the _cset_fast_test bitmap in anticipation of adding
@@ -4241,7 +4273,7 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
         gclog_or_tty->print_cr("Before recording survivors.\nYoung List:");
         _young_list->print();
 #endif // YOUNG_LIST_VERBOSE
-
+        // 当前的suvivor region
         g1_policy()->record_survivor_regions(_young_list->survivor_length(),
                                              _young_list->first_survivor_region(),
                                              _young_list->last_survivor_region());
@@ -4266,8 +4298,10 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
           // We have to do this before we notify the CM threads that
           // they can start working to make sure that all the
           // appropriate initialization is done on the CM object.
-          concurrent_mark()->checkpointRootsInitialPost();// 为并发标记做准备
-          set_marking_started();// 进入并发标记阶段，让cm线程可以执行这个阶段的操作
+          // 准备进入并发阶段 ：为并发标记做准备
+          concurrent_mark()->checkpointRootsInitialPost();
+          //  进入并发标记阶 ：让cm线程可以执行这个阶段的操作
+          set_marking_started();// 
           // Note that we don't actually trigger the CM thread at
           // this point. We do that later when we're sure that
           // the current thread has completed its logging output.
@@ -4368,6 +4402,7 @@ G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
       gc_epilogue(false);
     }
 
+    // gc日志完整输出-》耗时、对象变化 
     // Print the remainder of the GC log output.
     log_gc_footer(os::elapsedTime() - pause_start_sec);
 
@@ -4646,23 +4681,31 @@ void G1CollectedHeap::preserve_mark_if_necessary(oop obj, markOop m) {
   }
 }
 
+// gc中分配对象
 HeapWord* G1CollectedHeap::par_allocate_during_gc(GCAllocPurpose purpose,
                                                   size_t word_size) {
+  // gc中申请分配其实就是2种region里分配：1. suvivor 2. old
+  // 如果指定的失败了，则尝试另一种的分配                                                  
+
   if (purpose == GCAllocForSurvived) {
+    // 直接suvivor分配
     HeapWord* result = survivor_attempt_allocation(word_size);
     if (result != NULL) {
       return result;
     } else {
       // Let's try to allocate in the old gen in case we can fit the
       // object there.
+      // 失败尝试old分配
       return old_attempt_allocation(word_size);
     }
   } else {
     assert(purpose ==  GCAllocForTenured, "sanity");
+    // 先old的分配
     HeapWord* result = old_attempt_allocation(word_size);
     if (result != NULL) {
       return result;
     } else {
+      // 不行尝试suvivor
       // Let's try to allocate in the survivors in case we can fit the
       // object there.
       return survivor_attempt_allocation(word_size);
@@ -4824,17 +4867,18 @@ void G1ParCopyClosure<do_gen_barrier, barrier, do_mark_object>
 
   HeapRegion* from_hr = _g1->heap_region_containing(from_obj);
   assert(from_hr != NULL, "sanity");
-  assert(from_hr->in_collection_set(), "from obj should be in the CSet");
+  assert(from_hr->in_collection_set(), "from obj should be in the CSet");// from 对象应该是cset
 
   HeapRegion* to_hr = _g1->heap_region_containing(to_obj);
   assert(to_hr != NULL, "sanity");
-  assert(!to_hr->in_collection_set(), "should not mark objects in the CSet");
+  assert(!to_hr->in_collection_set(), "should not mark objects in the CSet");// to 对象不应该在cset，不能标记
 #endif // ASSERT
 
   // The object might be in the process of being copied by another
   // worker so we cannot trust that its to-space image is
   // well-formed. So we have to read its size from its from-space
   // image which we know should not be changing.
+  // 对to对象（新）标记gray
   _cm->grayRoot(to_obj, (size_t) from_obj->size(), _worker_id);
 }
 
@@ -4939,6 +4983,9 @@ template <bool do_gen_barrier, G1Barrier barrier, bool do_mark_object>
 template <class T>
 void G1ParCopyClosure<do_gen_barrier, barrier, do_mark_object>
 ::do_oop_work(T* p) {
+  // 对对象执行
+
+  // 获取真实对象地址
   oop obj = oopDesc::load_decode_heap_oop(p);
   assert(barrier != G1BarrierRS || obj != NULL,
          "Precondition: G1BarrierRS implies obj is non-NULL");
@@ -4946,23 +4993,28 @@ void G1ParCopyClosure<do_gen_barrier, barrier, do_mark_object>
   assert(_worker_id == _par_scan_state->queue_num(), "sanity");
 
   // here the null check is implicit in the cset_fast_test() test
-  if (_g1->in_cset_fast_test(obj)) {
+  if (_g1->in_cset_fast_test(obj)) {// 在cset中
     oop forwardee;
-    if (obj->is_forwarded()) {
-      forwardee = obj->forwardee();
+    if (obj->is_forwarded()) {// 需要被回收得
+      forwardee = obj->forwardee();// 清理markword
     } else {
-      forwardee = copy_to_survivor_space(obj);
+      // 执行copy到suvivor
+      forwardee = copy_to_survivor_space(obj);// 返回新指针
     }
     assert(forwardee != NULL, "forwardee should not be NULL");
+    // 更新p指针
     oopDesc::encode_store_heap_oop(p, forwardee);
+    // 当前需要标记对象 and 本次进行了copy，标记新对象为gray
     if (do_mark_object && forwardee != obj) {
       // If the object is self-forwarded we don't need to explicitly
       // mark it, the evacuation failure protocol will do so.
       mark_forwarded_object(obj, forwardee);
     }
 
+    // 下面就是不同的屏障执行
     // When scanning the RS, we only care about objs in CS.
     if (barrier == G1BarrierRS) {
+      // RS屏障执行更新
       _par_scan_state->update_rs(_from, p, _worker_id);
     } else if (barrier == G1BarrierKlass) {
       do_klass_barrier(p, forwardee);
@@ -4971,6 +5023,7 @@ void G1ParCopyClosure<do_gen_barrier, barrier, do_mark_object>
     // The object is not in collection set. If we're a root scanning
     // closure during an initial mark pause (i.e. do_mark_object will
     // be true) then attempt to mark the object.
+    // 不在cset的直接
     if (do_mark_object && _g1->is_in_g1_reserved(obj)) {
       mark_object(obj);
     }
@@ -5214,6 +5267,7 @@ public:
       int so = SharedHeap::SO_AllClasses | SharedHeap::SO_Strings;
 
       pss.start_strong_roots();
+      // 执行强gc root扫描
       _g1h->g1_process_strong_roots(/* is scavenging */ true,
                                     SharedHeap::ScanningOption(so),
                                     scan_root_cl,
@@ -5224,8 +5278,10 @@ public:
 
       {
         double start = os::elapsedTime();
+        // 执行了copy
         G1ParEvacuateFollowersClosure evac(_g1h, &pss, _queues, &_terminator);
         evac.do_void();
+
         double elapsed_ms = (os::elapsedTime()-start)*1000.0;
         double term_ms = pss.term_time()*1000.0;
         _g1h->g1_policy()->phase_times()->add_obj_copy_time(worker_id, elapsed_ms-term_ms);
@@ -5265,6 +5321,8 @@ g1_process_strong_roots(bool is_scavenging,
                         int worker_i) {
 
   // First scan the strong roots
+
+  // ext_roots扫描 
   double ext_roots_start = os::elapsedTime();
   double closure_app_time_sec = 0.0;
 
@@ -5293,9 +5351,11 @@ g1_process_strong_roots(bool is_scavenging,
 
   // Finish up any enqueued closure apps (attributed as object copy time).
   buf_scan_non_heap_roots.done();
+  //  完成ext_roots扫描 
 
   double obj_copy_time_sec = buf_scan_non_heap_roots.closure_app_seconds();
 
+  // [完成对象copy]
   g1_policy()->phase_times()->record_obj_copy_time(worker_i, obj_copy_time_sec * 1000.0);
 
   double ext_root_time_ms =
@@ -5308,6 +5368,7 @@ g1_process_strong_roots(bool is_scavenging,
   // as implicitly live).
   double satb_filtering_ms = 0.0;
   if (!_process_strong_tasks->is_task_claimed(G1H_PS_filter_satb_buffers)) {
+    // 正在并发标记阶段
     if (mark_in_progress()) {
       double satb_filter_start = os::elapsedTime();
 
@@ -5324,6 +5385,7 @@ g1_process_strong_roots(bool is_scavenging,
   // the collection set.
   // Note all threads participate in this set of root tasks.
   double mark_strong_code_roots_ms = 0.0;
+  // 标记gc root
   if (g1_policy()->during_initial_mark_pause() && !(so & SO_CodeCache)) {
     double mark_strong_roots_start = os::elapsedTime();
     mark_strong_code_roots(worker_i);
@@ -5331,6 +5393,7 @@ g1_process_strong_roots(bool is_scavenging,
   }
   g1_policy()->phase_times()->record_strong_code_root_mark_time(worker_i, mark_strong_code_roots_ms);
 
+  // 扫描cset？
   // Now scan the complement of the collection set.
   if (scan_rs != NULL) {
     g1_rem_set()->oops_into_collection_set_do(scan_rs, &eager_scan_code_roots, worker_i);
@@ -5876,6 +5939,7 @@ void G1CollectedHeap::evacuate_collection_set(EvacuationInfo& evacuation_info) {
   // Should G1EvacuationFailureALot be in effect for this GC?
   NOT_PRODUCT(set_evacuation_failure_alot_for_current_gc();)
 
+  // 全局堆remset--记录的是哪些区域是否目标状态
   g1_rem_set()->prepare_for_oops_into_collection_set_do();
 
   // Disable the hot card cache.
@@ -5959,6 +6023,7 @@ void G1CollectedHeap::evacuate_collection_set(EvacuationInfo& evacuation_info) {
     JNIHandles::weak_oops_do(&is_alive, &keep_alive);
   }
 
+  // 已经完成copy移动操作，后置清理
   // 釋放之前用於gc後的reigon,這裡把suvivor 、old都加入到實際region鏈錶
   // 也就是younglist的鏈錶更新觸發點
   release_gc_alloc_regions(n_workers, evacuation_info);
@@ -6586,6 +6651,7 @@ void G1CollectedHeap::retire_mutator_alloc_region(HeapRegion* alloc_region,
   assert_heap_locked_or_at_safepoint(true /* should_be_vm_thread */);
   assert(alloc_region->is_young(), "all mutator alloc regions should be young");
 
+  // region不作为mutator_alloc_region后，加入到cset候选
   g1_policy()->add_region_to_incremental_cset_lhs(alloc_region);// 加入到cset的链表
   _summary_bytes_used += allocated_bytes;
   _hr_printer.retire(alloc_region);
@@ -6636,6 +6702,7 @@ HeapRegion* G1CollectedHeap::new_gc_alloc_region(size_t word_size,
       // should never scan survivors. But it doesn't hurt to do it
       // for survivors too.
       new_alloc_region->set_saved_mark();
+      // 
       if (ap == GCAllocForSurvived) {
         new_alloc_region->set_survivor();
         _hr_printer.alloc(new_alloc_region, G1HRPrinter::Survivor);
@@ -6668,9 +6735,11 @@ void G1CollectedHeap::retire_gc_alloc_region(HeapRegion* alloc_region,
   _hr_printer.retire(alloc_region);
 }
 
+//分配suvivor region
 HeapRegion* SurvivorGCAllocRegion::allocate_new_region(size_t word_size,
                                                        bool force) {
   assert(!force, "not supported for GC alloc regions");
+  // 分配suvivor region
   return _g1h->new_gc_alloc_region(word_size, count(), GCAllocForSurvived);
 }
 

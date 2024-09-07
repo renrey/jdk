@@ -46,7 +46,7 @@ ConcurrentMarkThread::ConcurrentMarkThread(ConcurrentMark* cm) :
   _in_progress(false),
   _vtime_accum(0.0),
   _vtime_mark_accum(0.0) {
-  create_and_start();
+  create_and_start();// 启动线程
 }
 
 class CMCheckpointRootsFinalClosure: public VoidClosure {
@@ -75,7 +75,7 @@ public:
 };
 
 
-
+// cm线程逻辑
 void ConcurrentMarkThread::run() {
   initialize_in_thread();
   _vtime_start = os::elapsedVTime();
@@ -90,6 +90,7 @@ void ConcurrentMarkThread::run() {
     // wait until started is set.
     sleepBeforeNextCycle();// 等待唤醒
     {
+      // 唤醒进入到这里就是1个cycle
       ResourceMark rm;
       HandleMark   hm;
       double cycle_start = os::elapsedVTime();
@@ -113,6 +114,7 @@ void ConcurrentMarkThread::run() {
         // 1. 初始标记
         // 执行扫描root region
         _cm->scanRootRegions();// 只有主线程更新_scan_in_progress=true才会真正执行
+        // 此时gc root为 root region（suvivor）的对象
 
         double scan_end = os::elapsedTime();
         if (G1Log::fine()) {
@@ -122,7 +124,7 @@ void ConcurrentMarkThread::run() {
                                  scan_end - scan_start);
         }
       }
-
+      
       double mark_start_sec = os::elapsedTime();
       if (G1Log::fine()) {
         gclog_or_tty->date_stamp(PrintGCDateStamps);
@@ -135,7 +137,8 @@ void ConcurrentMarkThread::run() {
         iter++;
         // 2. 并发标记
         if (!cm()->has_aborted()) {// 就是没发生full gc（发生full gc这个是true）
-          // 没发生full gc ，执行gc root扫描
+          // [没有发生full gc] ，执行gc root扫描
+          // 对root region的对象进行递归扫描
           _cm->markFromRoots();
         }
 

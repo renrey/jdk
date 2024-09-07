@@ -118,7 +118,7 @@ void JNIHandles::destroy_weak_global(jobject handle) {
 
 
 void JNIHandles::oops_do(OopClosure* f) {
-  f->do_oop(&_deleted_handle);
+  f->do_oop(&_deleted_handle);// 對上次被刪除handle縂對象執行
   _global_handles->oops_do(f);
 }
 

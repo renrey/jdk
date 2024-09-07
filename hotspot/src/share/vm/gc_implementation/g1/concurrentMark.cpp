@@ -424,6 +424,7 @@ HeapRegion* CMRootRegions::claim_next() {
   }
 
   // Currently, only survivors can be root regions.
+  // 实际就是从当前young 代的第1个s region开始
   HeapRegion* res = _next_survivor;
   if (res != NULL) {
     MutexLockerEx x(RootRegionScan_lock, Mutex::_no_safepoint_check_flag);
@@ -567,7 +568,7 @@ ConcurrentMark::ConcurrentMark(G1CollectedHeap* g1h, ReservedSpace heap_rs) :
   SATBMarkQueueSet& satb_qs = JavaThread::satb_mark_queue_set();
   satb_qs.set_buffer_size(G1SATBBufferSize);
 
-  // 初始配置root 级region
+  // 配置root region (存放地址)
   _root_regions.init(_g1h, this);
 
   if (ConcGCThreads > ParallelGCThreads) {
@@ -1190,7 +1191,8 @@ void ConcurrentMark::scanRootRegion(HeapRegion* hr, uint worker_id) {
   while (curr < end) {
     Prefetch::read(curr, interval);
     oop obj = oop(curr);
-    // 每个obj对象执行cl函数（G1RootRegionScanClosure）
+    // 每个obj对象执行cl函数（[G1RootRegionScanClosure::do_oop_nv]）
+    // -> ConcurrentMark::grayRoot：标记变灰-》实际就是bitMap上标记
     int size = obj->oop_iterate(&cl);
     assert(size == obj->size(), "sanity");
     curr += size;
@@ -1212,9 +1214,11 @@ public:
 
     CMRootRegions* root_regions = _cm->root_regions();
     HeapRegion* hr = root_regions->claim_next();
+    // 实际就是当前young 的suvivor region
     // 就是扫描所有root region
     while (hr != NULL) {
       // 具体扫描单个root region！！！ 
+      // 主要把这些region上的对象标灰 -> bitmap中对应区域更新1
       _cm->scanRootRegion(hr, worker_id);
       hr = root_regions->claim_next();// 下一个
     }
@@ -1232,6 +1236,9 @@ void ConcurrentMark::scanRootRegions() {
            "Maximum number of marking threads exceeded");
     uint active_workers = MAX2(1U, parallel_marking_threads());
 
+    // 扫描root region任务
+    // [root region] 当前suvivor region（上次存活的对象）
+    // [扫描root region] 标记里面的对象（灰色）-》实际就是bitmap标记位置
     // 扫描任务对象
     CMRootRegionScanTask task(this);
     if (use_parallel_marking_threads()) {
@@ -2839,7 +2846,7 @@ ConcurrentMark::claim_region(uint worker_id) {
 
   // _heap_end will not change underneath our feet; it only changes at
   // yield points.
-  while (finger < _heap_end) {
+  while (finger < _heap_end) {// 一直到heap空间结尾
     assert(_g1h->is_in_g1_reserved(finger), "invariant");
 
     // Note on how this code handles humongous regions. In the
@@ -2865,6 +2872,7 @@ ConcurrentMark::claim_region(uint worker_id) {
     // claim_region() and a humongous object allocation might force us
     // to do a bit of unnecessary work (due to some unnecessary bitmap
     // iterations) but it should not introduce and correctness issues.
+    // 通过finger拿到当前
     HeapRegion* curr_region   = _g1h->heap_region_containing_raw(finger);
     HeapWord*   bottom        = curr_region->bottom();
     HeapWord*   end           = curr_region->end();
@@ -2878,8 +2886,10 @@ ConcurrentMark::claim_region(uint worker_id) {
     }
 
     // Is the gap between reading the finger and doing the CAS too long?
+    // cas _finger 从finger变成end 
     HeapWord* res = (HeapWord*) Atomic::cmpxchg_ptr(end, &_finger, finger);
     if (res == finger) {
+      // cas成功
       // we succeeded
 
       // notice that _finger == end cannot be guaranteed here since,
@@ -2896,6 +2906,7 @@ ConcurrentMark::claim_region(uint worker_id) {
           gclog_or_tty->print_cr("[%u] region "PTR_FORMAT" is not empty, "
                                  "returning it ", worker_id, curr_region);
         }
+        // 返回
         return curr_region;
       } else {
         assert(limit == bottom,
@@ -2918,7 +2929,7 @@ ConcurrentMark::claim_region(uint worker_id) {
       }
 
       // read it again
-      finger = _finger;
+      finger = _finger;// 再读
     }
   }
 
@@ -3411,9 +3422,9 @@ public:
     assert(addr >= _task->finger(), "invariant");
 
     // We move that task's local finger along.
-    _task->move_finger_to(addr);
+    _task->move_finger_to(addr);// 更新finger
 
-    // 遍历对象引用的对象，递归执行扫描函数
+    // 【遍历对象引用的对象，递归执行扫描函数】
     _task->scan_object(oop(addr));
     // we only partially drain the local queue and global stack
     _task->drain_local_queue(true);
@@ -4169,7 +4180,10 @@ void CMTask::do_marking_step(double time_target_ms,
   // 首先拿出所有可用的satb  buffer，在下次调用这个方法之前，都不会关注satb
   // 如果有足够的已完成的sate buffer，常规时钟会终止本次任务，以达到重启的目的
   drain_satb_buffers();
+  // 这里stab就是漏标问题解决-》扫描旧对象 = 被删除的引用
+
   // ...then partially drain the local queue and the global stack
+  // 第1次出栈
   drain_local_queue(true);
   drain_global_stack(true);
 
@@ -4242,7 +4256,7 @@ void CMTask::do_marking_step(double time_target_ms,
         giveup_current_region();// 放弃cur_region-》停止扫描
         regular_clock_call();
       // 正常操作  
-      // 对bitmap每个bit代表的位置都执行递归扫描  
+      // 对当前region的对象执行扫描 -》CMBitMapClosure:do_bit
       } else if (_nextMarkBitMap->iterate(&bitmap_closure, mr)) {
         // 进来代表这个region的对象都被扫描完了
         giveup_current_region();// 放弃当前region？-》停止扫描
@@ -4286,6 +4300,7 @@ void CMTask::do_marking_step(double time_target_ms,
 
     // We then partially drain the local queue and the global stack.
     // (Do we really need this?)
+    // 出栈
     drain_local_queue(true);
     drain_global_stack(true);
 
@@ -4306,7 +4321,8 @@ void CMTask::do_marking_step(double time_target_ms,
       if (_cm->verbose_low()) {
         gclog_or_tty->print_cr("[%u] trying to claim a new region", _worker_id);
       }
-      // 获取下一个要扫描的region
+      // 但实际就是遍历连续空间的region
+      // 获取下一个的region -》递归拿next
       HeapRegion* claimed_region = _cm->claim_region(_worker_id);
       if (claimed_region != NULL) {
         // Yes, we managed to claim one
@@ -4318,7 +4334,7 @@ void CMTask::do_marking_step(double time_target_ms,
                                  _worker_id, claimed_region);
         }
 
-        // 更新_curr_region！！！
+        // 更新_curr_region！！！-》准备扫描下一个，递归更新next指针
         setup_for_region(claimed_region);
         assert(_curr_region == claimed_region, "invariant");
       }
@@ -4336,6 +4352,7 @@ void CMTask::do_marking_step(double time_target_ms,
              "at this point we should be out of regions");
     }
   } while ( _curr_region != NULL && !has_aborted());// 条件代表：gc还能正常执行且还有region需要扫描
+  // 递归完了（栈无元素） 或者 发生fullgc
 
   // 这里应该是扫描完需要的region -》当前worker线程扫描任务已完成
   // 而且未发生full gc

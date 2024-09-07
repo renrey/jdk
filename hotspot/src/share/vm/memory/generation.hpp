@@ -536,6 +536,7 @@ class Generation: public CHeapObj<mtGC> {
 
   // Iteration.
 
+  // 看意思是遍历当前代中所有对象的引用属性
   // Iterate over all the ref-containing fields of all objects in the
   // generation, calling "cl.do_oop" on each.
   virtual void oop_iterate(ExtendedOopClosure* cl);

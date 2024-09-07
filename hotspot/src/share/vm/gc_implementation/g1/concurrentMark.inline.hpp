@@ -252,9 +252,12 @@ inline bool CMBitMapRO::iterate(BitMapClosure* cl, MemRegion mr) {
 
     start_offset = _bm.get_next_one_offset(start_offset, end_offset);
     while (start_offset < end_offset) {
+      // 更新bitmap的bit
       if (!cl->do_bit(start_offset)) {
+        // 任务被终止，停止
         return false;
       }
+      // 下一个对象
       HeapWord* next_addr = MIN2(nextObject(offsetToHeapWord(start_offset)), end_addr);
       BitMap::idx_t next_offset = heapWordToOffset(next_addr);
       start_offset = _bm.get_next_one_offset(next_offset, end_offset);

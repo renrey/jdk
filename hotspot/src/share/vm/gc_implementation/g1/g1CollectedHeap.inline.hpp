@@ -97,6 +97,7 @@ inline HeapWord* G1CollectedHeap::survivor_attempt_allocation(size_t
                                                       false /* bot_updates */);
   if (result == NULL) {
     MutexLockerEx x(FreeList_lock, Mutex::_no_safepoint_check_flag);
+    // 调用在suvivor region 分配
     result = _survivor_gc_alloc_region.attempt_allocation_locked(word_size,
                                                       false /* bot_updates */);
   }

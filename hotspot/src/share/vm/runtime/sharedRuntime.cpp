@@ -225,12 +225,12 @@ JRT_LEAF(void, SharedRuntime::g1_wb_pre(oopDesc* orig, JavaThread *thread))
   }
   assert(orig->is_oop(true /* ignore mark word */), "Error");
   // store the original value that was in the field reference
-  thread->satb_mark_queue().enqueue(orig);
+  thread->satb_mark_queue().enqueue(orig);// 更新前-》寫入satb
 JRT_END
 
 // G1 write-barrier post: executed after a pointer store.
 JRT_LEAF(void, SharedRuntime::g1_wb_post(void* card_addr, JavaThread* thread))
-  thread->dirty_card_queue().enqueue(card_addr);
+  thread->dirty_card_queue().enqueue(card_addr);// 更新後-》變髒，寫入dirty_card_queue
 JRT_END
 
 #endif // INCLUDE_ALL_GCS

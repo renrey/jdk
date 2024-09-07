@@ -66,8 +66,9 @@ template <class T> inline void OopsInGenClosure::do_barrier(T* p) {
 
   // 指向年轻代（指针< _gen_boundary），标记card
   // If p points to a younger generation, mark the card.
-  if ((HeapWord*)obj < _gen_boundary) {
-    // 更新rs（记忆集合，结构是cardtable），其实就是更新p所在ct标记
+  // 晉升則不執行
+  if ((HeapWord*)obj < _gen_boundary) {// 但這個代表obj也在年輕代（當前代），即被copy到suvivor
+    // 更新rs（记忆集合，结构是cardtable），其实就是更新p所在ct标记為年輕代
     // CardTableRS
     _rs->inline_write_ref_field_gc(p, obj);
   }
@@ -102,6 +103,7 @@ template <class T> inline void ScanClosure::do_oop_work(T* p) {
     // 需要解析的是narrowOop，（oop时不需要）oopDesc::decode_heap_oop_not_null(narrowOop v)
     oop obj = oopDesc::decode_heap_oop_not_null(heap_oop);
 
+    // 下面這個操作就是copy年輕代對象
     // _boundary 代表老年代的空间开始地址
     // 只有年轻代对象才会处理
     if ((HeapWord*)obj < _boundary) {
@@ -114,13 +116,14 @@ template <class T> inline void ScanClosure::do_oop_work(T* p) {
       oopDesc::encode_store_heap_oop_not_null(p, new_obj);
     }
 
+    // 下面這個操作針對老年代-》執行所謂的gc屏障，記錄cardtable（指向年輕代）
     // OopsInGenClosure要求执行barrier，为了更新引用后是老年代指向年轻代
     // 其实就是晋升到老年代后，更新指向年轻代的脏卡，barrier就是这个操作需要写屏障
-
     if (is_scanning_a_klass()) {
       do_klass_barrier();
     } else if (_gc_barrier) {
       // Now call parent closure
+      // 對移動位置後的p（可能晉升老年代or copy到suvivor）執行gc屏障
       do_barrier(p);
     }
   }
@@ -135,16 +138,19 @@ inline void ScanClosure::do_oop_nv(narrowOop* p) { ScanClosure::do_oop_work(p); 
 template <class T> inline void FastScanClosure::do_oop_work(T* p) {
   T heap_oop = oopDesc::load_heap_oop(p);
   // Should we copy the obj?
-  if (!oopDesc::is_null(heap_oop)) {
+  if (!oopDesc::is_null(heap_oop)) {// 當前OOP非null
     oop obj = oopDesc::decode_heap_oop_not_null(heap_oop);
     if ((HeapWord*)obj < _boundary) {
       assert(!_g->to()->is_in_reserved(obj), "Scanning field twice?");
+      // 執行copy or 向前指針的操作
+      // 用於is_forwarded判斷是否已遍歷過
       oop new_obj = obj->is_forwarded() ? obj->forwardee()
                                         : _g->copy_to_survivor_space(obj);
       oopDesc::encode_store_heap_oop_not_null(p, new_obj);
-      if (is_scanning_a_klass()) {
+      // fast的地方-》老年代不會執行gc屏障
+      if (is_scanning_a_klass()) {// klass的屏障
         do_klass_barrier();
-      } else if (_gc_barrier) {
+      } else if (_gc_barrier) {// 需要屏障的還要執行
         // Now call parent closure
         do_barrier(p);
       }

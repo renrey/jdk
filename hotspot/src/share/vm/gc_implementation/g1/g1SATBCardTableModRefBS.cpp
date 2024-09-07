@@ -111,7 +111,7 @@ G1SATBCardTableLoggingModRefBS(MemRegion whole_heap,
   G1SATBCardTableModRefBS(whole_heap, max_covered_regions),
   _dcqs(JavaThread::dirty_card_queue_set())
 {
-  _kind = G1SATBCTLogging;
+  _kind = G1SATBCTLogging;//  继承G1SATB
 }
 
 void

@@ -64,7 +64,7 @@ class CardTableRS: public GenRemSet {
 
   // 代表现成结构的CardTableModRefBS做扩展
   enum ExtendedCardValue {
-    youngergen_card   = CardTableModRefBS::CT_MR_BS_last_reserved + 1, // 16+1:10001
+    youngergen_card   = CardTableModRefBS::CT_MR_BS_last_reserved + 1, // 16+1:00010001
     // These are for parallel collection.
     // There are three P (parallel) youngergen card values.  In general, this
     // needs to be more than the number of generations (including the perm
@@ -72,8 +72,8 @@ class CardTableRS: public GenRemSet {
     // if we add more gens, we have to add more values.
     // 下面的代表并行使用的
     youngergenP1_card  = CardTableModRefBS::CT_MR_BS_last_reserved + 2,// 18:10010
-    youngergenP2_card  = CardTableModRefBS::CT_MR_BS_last_reserved + 3,
-    youngergenP3_card  = CardTableModRefBS::CT_MR_BS_last_reserved + 4,
+    youngergenP2_card  = CardTableModRefBS::CT_MR_BS_last_reserved + 3,// 19:10011
+    youngergenP3_card  = CardTableModRefBS::CT_MR_BS_last_reserved + 4,// 20:10100
     cur_youngergen_and_prev_nonclean_card =
       CardTableModRefBS::CT_MR_BS_last_reserved + 5
   };
@@ -142,7 +142,7 @@ public:
     jbyte* byte = _ct_bs->byte_for(field);
     
     // 2. 把指针的对象（btye）更新成youngergen_card（17，二进制10001）
-    // 等于变脏？
+    // 等于变脏？-》指向年輕代的bit位=1
     *byte = youngergen_card;
   }
   void write_ref_field_gc_work(void* field, oop new_val) {

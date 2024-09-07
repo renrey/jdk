@@ -63,6 +63,7 @@ void PtrQueue::enqueue_known_active(void* ptr) {
 
   assert(_index > 0, "postcondition");
   _index -= oopSize;
+  // 写入值的ptr指针在数组中
   _buf[byte_index_to_index((int)_index)] = ptr;
   assert(0 <= _index && _index <= _sz, "Invariant.");
 }
